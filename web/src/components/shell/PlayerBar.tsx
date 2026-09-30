@@ -9,17 +9,17 @@ export function PlayerBar() {
     >
       <p className="text-[14px] text-fg-subtle">Nothing playing</p>
       <div className="flex items-center gap-2">
-        <button aria-label="Previous" disabled className="hidden size-11 place-items-center rounded-full text-fg-muted opacity-40 sm:grid">
+        <button aria-label="Previous" disabled className="hidden size-11 place-items-center rounded-full text-fg-muted opacity-40 cursor-not-allowed sm:grid">
           <SkipBack size={20} aria-hidden />
         </button>
-        <button aria-label="Play" disabled className="grid size-10 place-items-center rounded-full bg-accent text-on-accent opacity-40">
+        <button aria-label="Play" disabled className="grid size-10 place-items-center rounded-full bg-accent text-on-accent opacity-40 cursor-not-allowed">
           <Play size={20} aria-hidden fill="currentColor" />
         </button>
-        <button aria-label="Next" disabled className="hidden size-11 place-items-center rounded-full text-fg-muted opacity-40 sm:grid">
+        <button aria-label="Next" disabled className="hidden size-11 place-items-center rounded-full text-fg-muted opacity-40 cursor-not-allowed sm:grid">
           <SkipForward size={20} aria-hidden />
         </button>
       </div>
-      <button aria-label="Queue" disabled className="grid size-11 place-items-center rounded-full text-fg-muted opacity-40">
+      <button aria-label="Queue" disabled className="grid size-11 place-items-center rounded-full text-fg-muted opacity-40 cursor-not-allowed">
         <ListMusic size={20} aria-hidden />
       </button>
     </section>

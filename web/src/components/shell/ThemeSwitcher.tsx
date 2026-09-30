@@ -54,7 +54,7 @@ export function ThemeSwitcher() {
           aria-checked={theme === value}
           aria-label={label}
           onClick={() => set(value)}
-          className="grid size-10 place-items-center rounded-full text-fg-muted hover:bg-surface-hover hover:text-fg aria-checked:bg-surface-active aria-checked:text-fg"
+          className="grid size-11 place-items-center rounded-full text-fg-muted hover:bg-surface-hover hover:text-fg aria-checked:bg-surface-active aria-checked:text-fg"
         >
           <Icon size={18} aria-hidden />
         </button>

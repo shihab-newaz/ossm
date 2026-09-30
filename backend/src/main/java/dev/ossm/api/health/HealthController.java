@@ -1,6 +1,7 @@
 package dev.ossm.api.health;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import javax.sql.DataSource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,7 +17,9 @@ class HealthController {
     this.dataSource = dataSource;
   }
 
-  record Health(String status, String database) {}
+  record Health(
+      @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String status,
+      @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String database) {}
 
   @Operation(operationId = "getHealth")
   @GetMapping("/health")

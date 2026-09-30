@@ -6,3 +6,5 @@ export const navItems: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: "/search", label: "Search", Icon: Search },
   { href: "/library", label: "Library", Icon: Library },
 ];
+
+export const isActive = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));

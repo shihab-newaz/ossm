@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { navItems } from "./nav";
+import { isActive, navItems } from "./nav";
 
 export function TabBar() {
   const pathname = usePathname();
@@ -12,7 +12,7 @@ export function TabBar() {
       className="fixed inset-x-0 bottom-0 z-20 grid h-[var(--tabbar-height)] grid-cols-4 border-t border-border bg-surface lg:hidden"
     >
       {navItems.map(({ href, label, Icon }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        const active = isActive(pathname, href);
         return (
           <Link
             key={href}

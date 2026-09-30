@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { navItems } from "./nav";
+import { isActive, navItems } from "./nav";
 
 export function Sidebar() {
   const pathname = usePathname();
   return (
     <aside className="hidden w-60 shrink-0 flex-col gap-6 bg-bg-subtle p-4 lg:flex" aria-label="Sidebar">
       <div className="flex items-center gap-3 px-2 pt-2">
-        <span aria-hidden className="grid size-8 place-items-center rounded-card bg-accent font-display font-extrabold text-on-accent">
+        <span aria-hidden className="grid size-8 place-items-center rounded-card bg-fg font-display font-extrabold text-bg">
           O
         </span>
         <span className="font-display text-xl font-extrabold tracking-tight">OSSM</span>
@@ -17,7 +17,7 @@ export function Sidebar() {
       <nav aria-label="Main">
         <ul className="flex flex-col gap-1">
           {navItems.map(({ href, label, Icon }) => {
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            const active = isActive(pathname, href);
             return (
               <li key={href}>
                 <Link
