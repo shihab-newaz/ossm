@@ -8,7 +8,7 @@ Visual design lives in `DESIGN.md`. Follow its tokens literally.
 
 ### Issue tracker
 
-Issues and specs live in GitHub Issues at `shihab-newaz/ossm`. See `docs/agents/issue-tracker.md`.
+Specs live as local markdown files in `docs/specs/` and tickets in `docs/tickets/` (not GitHub Issues). See `docs/agents/issue-tracker.md`.
 
 ### Domain docs
 
