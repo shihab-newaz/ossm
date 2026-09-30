@@ -1,0 +1,12 @@
+# One origin: /api goes to the backend, everything else to the Next.js server.
+:80 {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

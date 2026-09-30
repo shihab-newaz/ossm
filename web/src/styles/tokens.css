@@ -1,0 +1,115 @@
+/* DESIGN.md tokens. Light is the default; dark via data-theme="dark" or the system preference. */
+:root {
+  --bg: #ffffff;
+  --bg-subtle: #f6f5f8;
+  --surface: #ffffff;
+  --surface-hover: #efedf2;
+  --surface-active: #e6e3eb;
+  --border: #e4e1e8;
+  --border-strong: #cfcad6;
+  --text: #17151c;
+  --text-muted: #5e5a68;
+  --text-subtle: #8c8896;
+  --accent: #ff5a1f;
+  --accent-hover: #e84a12;
+  --accent-soft: #ffe9df;
+  --on-accent: #ffffff;
+  --focus: #2f6bff;
+
+  --success: #1f9d55;
+  --warning: #c98a00;
+  --danger: #d6293e;
+
+  --tile-1: #7b3fe4;
+  --tile-2: #e0245e;
+  --tile-3: #1e88e5;
+  --tile-4: #00897b;
+  --tile-5: #f4511e;
+  --tile-6: #c2185b;
+  --tile-7: #3949ab;
+  --tile-8: #43a047;
+  --tile-9: #6d4c41;
+  --tile-10: #d81b60;
+  --tile-11: #00acc1;
+  --tile-12: #8e24aa;
+
+  --shadow-1: 0 1px 2px rgba(23, 21, 28, 0.06);
+  --shadow-2: 0 6px 16px rgba(23, 21, 28, 0.18);
+  --shadow-3: 0 16px 40px rgba(23, 21, 28, 0.2);
+  --shadow-up: 0 -4px 16px rgba(23, 21, 28, 0.06);
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 40px;
+  --space-10: 48px;
+  --space-11: 64px;
+  --space-12: 80px;
+
+  --player-height: 80px;
+  --tabbar-height: 56px;
+  --topbar-height: 64px;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --player-height: 64px;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #111014;
+  --bg-subtle: #18171c;
+  --surface: #1e1d23;
+  --surface-hover: #26252c;
+  --surface-active: #302e36;
+  --border: #2c2a32;
+  --border-strong: #3d3a45;
+  --text: #f4f2f7;
+  --text-muted: #a9a5b3;
+  --text-subtle: #7a7684;
+  --accent: #ff6a33;
+  --accent-hover: #ff8152;
+  --accent-soft: #3a2016;
+  --focus: #6f9bff;
+  --success: #3fcb7e;
+  --warning: #f2b533;
+  --danger: #ff5a6e;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 6px 16px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-up: 0 -4px 16px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --bg: #111014;
+    --bg-subtle: #18171c;
+    --surface: #1e1d23;
+    --surface-hover: #26252c;
+    --surface-active: #302e36;
+    --border: #2c2a32;
+    --border-strong: #3d3a45;
+    --text: #f4f2f7;
+    --text-muted: #a9a5b3;
+    --text-subtle: #7a7684;
+    --accent: #ff6a33;
+    --accent-hover: #ff8152;
+    --accent-soft: #3a2016;
+    --focus: #6f9bff;
+    --success: #3fcb7e;
+    --warning: #f2b533;
+    --danger: #ff5a6e;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-2: 0 6px 16px rgba(0, 0, 0, 0.5);
+    --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.5);
+    --shadow-up: 0 -4px 16px rgba(0, 0, 0, 0.5);
+  }
+}

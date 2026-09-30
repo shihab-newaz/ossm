@@ -1,0 +1,52 @@
+name: ossm
+
+services:
+  proxy:
+    image: caddy:2-alpine
+    ports:
+      - "${OSSM_PORT:-8080}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - web
+      - api
+
+  web:
+    build: ../web
+    environment:
+      API_ORIGIN: http://api:8080
+
+  api:
+    build: ../backend
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/ossm
+      DATABASE_USER: ossm
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-ossm}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ossm
+      POSTGRES_USER: ossm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ossm}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ossm -d ossm"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Reference S3-compatible object store. Wired up for real in the SeaweedFS spike and the upload slice.
+  storage:
+    image: chrislusf/seaweedfs:latest
+    command: server -dir=/data -s3
+    volumes:
+      - storage-data:/data
+
+volumes:
+  db-data:
+  storage-data:
