@@ -21,3 +21,7 @@ One search box, available everywhere, that finds tracks, albums and artists quic
 - [ ] The palette opens from anywhere via both shortcuts and is fully keyboard navigable.
 - [ ] Search is only available to authenticated users and returns data from the shared library.
 - [ ] Queries are fast on a library of several thousand tracks (simple timing check in the Testcontainers suite).
+
+## Comments
+
+- Real-audio test library: `H:\AUDIO` on the dev machine (local only, not in the repo, and the files are not to be copied into it). Use it for manual and exploratory checks of this ticket. Automated tests should keep generating small fixture files instead.

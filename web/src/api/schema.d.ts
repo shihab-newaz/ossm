@@ -102,10 +102,184 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change your own password
+         * @description Requires the current password. Ends every other session of this user.
+         */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List users (admin) */
+        get: operations["listUsers"];
+        put?: never;
+        /**
+         * Invite a person (admin)
+         * @description Creates a pending account and a one-time invite link. The person chooses their own password.
+         */
+        post: operations["createUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * New invite link for a pending user (admin)
+         * @description Replaces any earlier link, used or not.
+         */
+        post: operations["reissueInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a user's access (admin)
+         * @description Ends all of their sessions. You cannot deactivate yourself.
+         */
+        post: operations["deactivateUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore a deactivated user (admin) */
+        post: operations["activateUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invites/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Look up an invite link
+         * @description Public. A used, expired or unknown token is indistinguishable.
+         */
+        get: operations["getInvite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invites/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a password from an invite and log in
+         * @description The token works once.
+         */
+        post: operations["acceptInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        UserSummary: {
+            /** Format: uuid */
+            id: string;
+            username: string;
+            /** @enum {string} */
+            role: "ADMIN" | "USER";
+            /** @enum {string} */
+            status: "ACTIVE" | "INVITED" | "DEACTIVATED";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateUserRequest: {
+            username: string;
+            /** @enum {string} */
+            role: "ADMIN" | "USER";
+        };
+        InviteCreated: {
+            user: components["schemas"]["UserSummary"];
+            /** @description Shown once. The link is /invite/{token}. */
+            token: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        InviteInfo: {
+            username: string;
+        };
+        AcceptInviteRequest: {
+            /** Format: password */
+            password: string;
+        };
+        ChangePasswordRequest: {
+            /** Format: password */
+            currentPassword: string;
+            /** Format: password */
+            newPassword: string;
+        };
         SetupStatus: {
             setupRequired: boolean;
         };
@@ -142,7 +316,10 @@ export interface components {
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        UserId: string;
+        InviteToken: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -311,6 +488,281 @@ export interface operations {
             };
             /** @description No valid session */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Password changed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wrong current password, or the new one is not acceptable */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All users, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSummary"][];
+                };
+            };
+        };
+    };
+    createUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUserRequest"];
+            };
+        };
+        responses: {
+            /** @description Pending account created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteCreated"];
+                };
+            };
+            /** @description Invalid username or role */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Username already taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reissueInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fresh invite */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteCreated"];
+                };
+            };
+            /** @description No such user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The user already has a password */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deactivateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deactivated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description You cannot deactivate yourself */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    activateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Activated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: components["parameters"]["InviteToken"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A usable invite */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteInfo"];
+                };
+            };
+            /** @description Invalid, used or expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    acceptInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: components["parameters"]["InviteToken"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Account active and logged in (session cookie set) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Password not acceptable */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Invalid, used or expired */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

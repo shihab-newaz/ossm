@@ -26,3 +26,7 @@ The player becomes a complete listening experience. The user manages a queue, pl
 - [ ] Every listed keyboard shortcut works and is listed in the help dialog; shortcuts do not fire while typing in an input.
 - [ ] Queue and player logic have behavior-level Vitest tests (next/previous, shuffle, repeat, persistence and restore) using the MSW mock.
 - [ ] All drawer and dialog controls are keyboard navigable with visible focus.
+
+## Comments
+
+- Real-audio test library: `H:\AUDIO` on the dev machine (local only, not in the repo, and the files are not to be copied into it). Use it for manual and exploratory checks of this ticket. Automated tests should keep generating small fixture files instead.

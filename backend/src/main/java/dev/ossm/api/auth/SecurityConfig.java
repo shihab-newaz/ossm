@@ -66,6 +66,12 @@ class SecurityConfig {
                         "/api/v1/auth/login",
                         "/api/v1/auth/logout")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/invites/*")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/invites/*/accept")
+                    .permitAll()
+                    .requestMatchers("/api/v1/users", "/api/v1/users/**")
+                    .hasRole("ADMIN")
                     .anyRequest()
                     .authenticated())
         .exceptionHandling(

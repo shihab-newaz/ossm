@@ -115,8 +115,268 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /api/v1/auth/password:
+    post:
+      operationId: changePassword
+      summary: Change your own password
+      description: Requires the current password. Ends every other session of this user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password changed
+        "400":
+          description: Wrong current password, or the new one is not acceptable
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/users:
+    get:
+      operationId: listUsers
+      summary: List users (admin)
+      responses:
+        "200":
+          description: All users, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummary"
+    post:
+      operationId: createUser
+      summary: Invite a person (admin)
+      description: Creates a pending account and a one-time invite link. The person chooses their own password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: Pending account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteCreated"
+        "400":
+          description: Invalid username or role
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Username already taken
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/users/{id}/invite:
+    post:
+      operationId: reissueInvite
+      summary: New invite link for a pending user (admin)
+      description: Replaces any earlier link, used or not.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Fresh invite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteCreated"
+        "404":
+          description: No such user
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: The user already has a password
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/users/{id}/deactivate:
+    post:
+      operationId: deactivateUser
+      summary: Revoke a user's access (admin)
+      description: Ends all of their sessions. You cannot deactivate yourself.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Deactivated
+        "404":
+          description: No such user
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: You cannot deactivate yourself
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/users/{id}/activate:
+    post:
+      operationId: activateUser
+      summary: Restore a deactivated user (admin)
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Activated
+        "404":
+          description: No such user
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/invites/{token}:
+    get:
+      operationId: getInvite
+      summary: Look up an invite link
+      description: Public. A used, expired or unknown token is indistinguishable.
+      parameters:
+        - $ref: "#/components/parameters/InviteToken"
+      responses:
+        "200":
+          description: A usable invite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteInfo"
+        "404":
+          description: Invalid, used or expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/invites/{token}/accept:
+    post:
+      operationId: acceptInvite
+      summary: Set a password from an invite and log in
+      description: The token works once.
+      parameters:
+        - $ref: "#/components/parameters/InviteToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptInviteRequest"
+      responses:
+        "201":
+          description: Account active and logged in (session cookie set)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Password not acceptable
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Invalid, used or expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InviteToken:
+      name: token
+      in: path
+      required: true
+      schema:
+        type: string
   schemas:
+    UserSummary:
+      type: object
+      required: [id, username, role, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        role:
+          type: string
+          enum: [ADMIN, USER]
+        status:
+          type: string
+          enum: [ACTIVE, INVITED, DEACTIVATED]
+        createdAt:
+          type: string
+          format: date-time
+    CreateUserRequest:
+      type: object
+      required: [username, role]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          pattern: "^[a-z0-9._-]+$"
+        role:
+          type: string
+          enum: [ADMIN, USER]
+    InviteCreated:
+      type: object
+      required: [user, token, expiresAt]
+      properties:
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        token:
+          type: string
+          description: Shown once. The link is /invite/{token}.
+        expiresAt:
+          type: string
+          format: date-time
+    InviteInfo:
+      type: object
+      required: [username]
+      properties:
+        username:
+          type: string
+    AcceptInviteRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 128
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 128
     SetupStatus:
       type: object
       required: [setupRequired]

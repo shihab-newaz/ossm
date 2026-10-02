@@ -22,3 +22,7 @@ The core blob pipeline, end to end for the simplest case. A logged-in user drags
 - [ ] The UI shows per-file progress and an "ingesting" state that resolves to the finished track without a manual refresh.
 - [ ] With an empty library, the UI shows an empty state that leads to the upload screen.
 - [ ] UI tests against the MSW mock cover the upload progress and ingest state transitions.
+
+## Comments
+
+- Real-audio test library: `H:\AUDIO` on the dev machine (local only, not in the repo, and the files are not to be copied into it). Use it for manual and exploratory checks of this ticket. Automated tests should keep generating small fixture files instead.

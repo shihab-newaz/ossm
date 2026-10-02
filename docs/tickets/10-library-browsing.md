@@ -25,3 +25,7 @@ Users browse their shared library the way they think about music, and every albu
 - [ ] The currently playing track is highlighted with an equalizer animation that respects reduced-motion settings.
 - [ ] API tests cover list and detail endpoints (paging, ordering, unknown ids, authorization).
 - [ ] UI tests cover tab switching, row play, and empty and loading states against the MSW mock.
+
+## Comments
+
+- Real-audio test library: `H:\AUDIO` on the dev machine (local only, not in the repo, and the files are not to be copied into it). Use it for manual and exploratory checks of this ticket. Automated tests should keep generating small fixture files instead.

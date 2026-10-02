@@ -21,3 +21,7 @@ A user clicks a track and hears it, with a persistent player that keeps playing 
 - [ ] Partial-content and range-not-satisfiable responses behave per HTTP semantics.
 - [ ] A stream error shows a toast and the player recovers (no stuck state).
 - [ ] Player store tests cover play, pause, seek and volume against the MSW mock.
+
+## Comments
+
+- Real-audio test library: `H:\AUDIO` on the dev machine (local only, not in the repo, and the files are not to be copied into it). Use it for manual and exploratory checks of this ticket. Automated tests should keep generating small fixture files instead.

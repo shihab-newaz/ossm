@@ -13,7 +13,7 @@ export const setupKey = ["auth", "setup"] as const;
 /** An error whose message is safe and useful to show to the person. */
 export class ProblemError extends Error {}
 
-const problemMessage = (problem: Problem | undefined, fallback: string) => new ProblemError(problem?.detail || fallback);
+export const problemMessage = (problem: Problem | undefined, fallback: string) => new ProblemError(problem?.detail || fallback);
 
 /** The logged-in user, or null when there is no session. */
 export function useMe() {

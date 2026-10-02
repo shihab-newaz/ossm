@@ -18,3 +18,7 @@ One end-to-end browser test against the full compose stack that proves the core 
 - [ ] The test is deterministic (no fixed sleeps; waits on observable state).
 - [ ] CI runs it on pull requests and publishes the trace and video on failure.
 - [ ] The test does not depend on any secrets or external network services.
+
+## Comments
+
+- Real-audio test library: `H:\AUDIO` on the dev machine (local only, not in the repo, and the files are not to be copied into it). Use it for manual and exploratory checks of this ticket. Automated tests should keep generating small fixture files instead.

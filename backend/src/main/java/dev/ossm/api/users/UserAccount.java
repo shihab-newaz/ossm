@@ -18,7 +18,8 @@ public class UserAccount {
   @Column(nullable = false)
   private String username;
 
-  @Column(name = "password_hash", nullable = false)
+  /** Null while the person has been invited but has not chosen a password yet. */
+  @Column(name = "password_hash")
   private String passwordHash;
 
   @Enumerated(EnumType.STRING)
@@ -54,11 +55,35 @@ public class UserAccount {
     return passwordHash;
   }
 
+  void setPasswordHash(String passwordHash) {
+    this.passwordHash = passwordHash;
+  }
+
   public Role getRole() {
     return role;
   }
 
   public boolean isActive() {
     return active;
+  }
+
+  void setActive(boolean active) {
+    this.active = active;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public UserStatus getStatus() {
+    if (!active) {
+      return UserStatus.DEACTIVATED;
+    }
+    return passwordHash == null ? UserStatus.INVITED : UserStatus.ACTIVE;
+  }
+
+  /** Whether this account may log in: active and past the invite stage. */
+  boolean canLogIn() {
+    return active && passwordHash != null;
   }
 }

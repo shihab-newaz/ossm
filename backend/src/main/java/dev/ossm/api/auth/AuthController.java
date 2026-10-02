@@ -1,5 +1,6 @@
 package dev.ossm.api.auth;
 
+import dev.ossm.api.auth.Dtos.ChangePasswordRequest;
 import dev.ossm.api.auth.Dtos.LoginRequest;
 import dev.ossm.api.auth.Dtos.Problem;
 import dev.ossm.api.auth.Dtos.SetupRequest;
@@ -30,10 +31,12 @@ class AuthController {
 
   private final Accounts accounts;
   private final SessionStarter sessions;
+  private final SessionRevoker revoker;
 
-  AuthController(Accounts accounts, SessionStarter sessions) {
+  AuthController(Accounts accounts, SessionStarter sessions, SessionRevoker revoker) {
     this.accounts = accounts;
     this.sessions = sessions;
+    this.revoker = revoker;
   }
 
   @Operation(operationId = "getSetupStatus")
@@ -116,6 +119,31 @@ class AuthController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   void logout(HttpServletRequest request) {
     sessions.end(request);
+  }
+
+  @Operation(operationId = "changePassword")
+  @ApiResponses({
+    @ApiResponse(responseCode = "204", description = "Password changed"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Wrong current password, or the new one is not acceptable",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = Problem.class)))
+  })
+  @PostMapping("/auth/password")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  void changePassword(
+      @Valid @RequestBody ChangePasswordRequest body,
+      Authentication authentication,
+      HttpServletRequest request) {
+    var username = authentication.getName();
+    if (!accounts.changePassword(username, body.currentPassword(), body.newPassword())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect.");
+    }
+    // Anyone holding an older session (a stolen cookie, a forgotten device) is logged out.
+    revoker.revokeAllExcept(username, request.getSession().getId());
   }
 
   @Operation(operationId = "getCurrentUser")

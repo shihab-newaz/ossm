@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { LogOut, Settings, Users } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useLogout, useMe } from "@/auth/session";
 
@@ -52,6 +53,16 @@ export function AccountMenu() {
             <p className="truncate font-semibold">{user.username}</p>
             <p className="text-[12px] capitalize text-fg-subtle">{user.role.toLowerCase()}</p>
           </div>
+          <Link role="menuitem" href="/settings" onClick={() => setOpen(false)} className="flex h-10 items-center gap-3 rounded-lg px-3 hover:bg-surface-hover">
+            <Settings size={18} aria-hidden />
+            Settings
+          </Link>
+          {user.role === "ADMIN" ? (
+            <Link role="menuitem" href="/admin/users" onClick={() => setOpen(false)} className="flex h-10 items-center gap-3 rounded-lg px-3 hover:bg-surface-hover">
+              <Users size={18} aria-hidden />
+              Manage users
+            </Link>
+          ) : null}
           <button
             role="menuitem"
             onClick={() => logout.mutate()}

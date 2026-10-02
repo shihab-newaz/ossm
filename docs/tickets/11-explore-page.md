@@ -24,3 +24,7 @@ The home page that makes the library feel alive, following DESIGN.md Section 10 
 - [ ] Tile rotation and hover effects are disabled under reduced-motion settings.
 - [ ] A new, empty instance shows an upload-oriented empty state instead of empty sections.
 - [ ] UI tests cover the populated and empty states against the MSW mock.
+
+## Comments
+
+- Real-audio test library: `H:\AUDIO` on the dev machine (local only, not in the repo, and the files are not to be copied into it). Use it for manual and exploratory checks of this ticket. Automated tests should keep generating small fixture files instead.
