@@ -42,8 +42,16 @@ services:
 
   # Reference S3-compatible object store. Wired up for real in the SeaweedFS spike and the upload slice.
   storage:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:4.48
     command: server -dir=/data -s3
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-ossm-access}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-ossm-secret-key}
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8333"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     volumes:
       - storage-data:/data
 
