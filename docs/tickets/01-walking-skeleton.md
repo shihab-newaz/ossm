@@ -1,7 +1,7 @@
 # 01: Walking skeleton
 
 **Parent:** docs/specs/01-phase-1-core-app.md (UI details: docs/specs/02-phase-1-web-ui.md)
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** None (can start immediately)
 
 ## What to build
@@ -18,9 +18,9 @@ The thinnest possible end-to-end system that every later slice builds on. A cont
 
 ## Acceptance criteria
 
-- [ ] One compose command brings up the full stack and the site loads over the proxy on one origin.
-- [ ] The web app renders the app shell per DESIGN.md in light, dark and system themes, responsive at mobile, tablet and desktop widths.
-- [ ] The web app's health indicator (or equivalent) calls the API through the generated client and shows success.
-- [ ] CI runs on every push and passes: backend tests using a real Postgres via Testcontainers, web tests, lint, OpenAPI drift check, image builds.
-- [ ] Changing the backend's API without updating the committed OpenAPI spec fails CI.
-- [ ] README explains how to run the stack and the project layout.
+- [x] One compose command brings up the full stack and the site loads over the proxy on one origin.
+- [x] The web app renders the app shell per DESIGN.md in light, dark and system themes, responsive at mobile, tablet and desktop widths.
+- [x] The web app's health indicator (or equivalent) calls the API through the generated client and shows success.
+- [x] CI runs on every push and passes: backend tests using a real Postgres via Testcontainers, web tests, lint, OpenAPI drift check, image builds.
+- [x] Changing the backend's API without updating the committed OpenAPI spec fails CI.
+- [x] README explains how to run the stack and the project layout.
