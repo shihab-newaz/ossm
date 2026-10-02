@@ -2,6 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { AccountMenu } from "./AccountMenu";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function TopBar() {
@@ -29,8 +30,9 @@ export function TopBar() {
           className="h-11 w-full rounded-full bg-bg-subtle pl-11 pr-4 text-[15px] placeholder:text-fg-subtle focus:bg-surface focus:outline-2 focus:outline-offset-0 focus:outline-focus"
         />
       </form>
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-2">
         <ThemeSwitcher />
+        <AccountMenu />
       </div>
     </header>
   );

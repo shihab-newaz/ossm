@@ -1,7 +1,7 @@
 # 03: First-run setup, login and sessions
 
 **Parent:** docs/specs/01-phase-1-core-app.md (UI details: docs/specs/02-phase-1-web-ui.md)
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 01 (Walking skeleton)
 
 ## What to build
@@ -15,11 +15,11 @@ A fresh instance can be claimed and a user can log in and out. On first visit wi
 
 ## Acceptance criteria
 
-- [ ] With no users, visiting the site shows setup; completing it creates an admin and logs them in.
-- [ ] The setup endpoint and screen are unavailable once any user exists (verified by an API test).
-- [ ] Correct credentials log in; wrong credentials show an error without revealing which field was wrong.
-- [ ] Passwords are stored as argon2id hashes (verified by an API-level test that the stored value is not the password).
-- [ ] The session cookie is HttpOnly and survives an API restart (restart test with Testcontainers).
-- [ ] An expired or missing session sends the user to login and returns them to the page they wanted.
-- [ ] Logout invalidates the session server-side.
-- [ ] UI tests against the MSW mock cover the setup, login, 401 redirect and logout flows.
+- [x] With no users, visiting the site shows setup; completing it creates an admin and logs them in.
+- [x] The setup endpoint and screen are unavailable once any user exists (verified by an API test).
+- [x] Correct credentials log in; wrong credentials show an error without revealing which field was wrong.
+- [x] Passwords are stored as argon2id hashes (verified by an API-level test that the stored value is not the password).
+- [x] The session cookie is HttpOnly and survives an API restart (restart test with Testcontainers).
+- [x] An expired or missing session sends the user to login and returns them to the page they wanted.
+- [x] Logout invalidates the session server-side.
+- [x] UI tests against the MSW mock cover the setup, login, 401 redirect and logout flows.

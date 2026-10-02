@@ -14,6 +14,23 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  session:
+    # Flyway owns the schema (V2); sessions are stored in Postgres so they survive restarts.
+    jdbc:
+      initialize-schema: never
+    timeout: 30d
+
+server:
+  servlet:
+    session:
+      cookie:
+        name: OSSM_SESSION
+        http-only: true
+        same-site: lax
+        path: /
+        max-age: 30d
+        # Set SESSION_COOKIE_SECURE=true when serving over HTTPS (Caddy does in production).
+        secure: ${SESSION_COOKIE_SECURE:false}
 
 logging:
   structured:
