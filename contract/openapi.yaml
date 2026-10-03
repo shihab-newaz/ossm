@@ -427,16 +427,131 @@ paths:
   /api/v1/tracks:
     get:
       operationId: listTracks
-      summary: Every track in the shared library, newest first
+      summary: Tracks in the shared library
+      description: >
+        Everything unless limit and offset are given. Sorted by sort (added,
+        newest first; title; or artist), always with a stable tie-break, so
+        pages never overlap or skip. The total is in X-Total-Count.
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/PageOffset"
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [added, title, artist]
+            default: added
       responses:
         "200":
           description: Tracks
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Track"
+  /api/v1/albums:
+    get:
+      operationId: listAlbums
+      summary: Albums in the shared library
+      description: >
+        Everything unless limit and offset are given. Sorted by sort (added,
+        newest first; title; or artist) with a stable tie-break. The total is in
+        X-Total-Count.
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/PageOffset"
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [added, title, artist]
+            default: added
+      responses:
+        "200":
+          description: Albums
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Album"
+  /api/v1/albums/{id}:
+    get:
+      operationId: getAlbum
+      summary: An album and its tracks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The album
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumDetail"
+        "404":
+          description: No such album
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/artists:
+    get:
+      operationId: listArtists
+      summary: Artists in the shared library, A to Z
+      description: Everything unless limit and offset are given. The total is in X-Total-Count.
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/PageOffset"
+      responses:
+        "200":
+          description: Artists
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Artist"
+  /api/v1/artists/{id}:
+    get:
+      operationId: getArtist
+      summary: An artist, their albums and their tracks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The artist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtistDetail"
+        "404":
+          description: No such artist
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /api/v1/tracks/{id}/stream:
     get:
       operationId: streamTrack
@@ -574,7 +689,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
 components:
+  headers:
+    TotalCount:
+      description: How many there are in all, whatever the page
+      schema:
+        type: integer
   parameters:
+    PageLimit:
+      name: limit
+      in: query
+      required: false
+      description: Page size, 1 to 1000. Leave out (with offset) for everything.
+      schema:
+        type: integer
+    PageOffset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
     Limit:
       name: limit
       in: query
@@ -705,7 +839,7 @@ components:
           format: date-time
     Track:
       type: object
-      required: [id, title, artist, durationMs, license, createdAt]
+      required: [id, title, artist, artistId, durationMs, license, uploadedBy, createdAt]
       properties:
         id:
           type: string
@@ -714,6 +848,12 @@ components:
           type: string
         artist:
           type: string
+        artistId:
+          type: string
+          format: uuid
+        uploadedBy:
+          type: string
+          description: Username of who uploaded it
         album:
           type: string
         albumId:
@@ -744,6 +884,80 @@ components:
         createdAt:
           type: string
           format: date-time
+    Album:
+      type: object
+      required: [id, title, artist, artistId, trackCount, durationMs]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        artist:
+          type: string
+        artistId:
+          type: string
+          format: uuid
+        year:
+          type: integer
+        coverUrl:
+          type: string
+        dominantColor:
+          type: string
+          description: "The cover dominant colour as #rrggbb, when it has a cover"
+        trackCount:
+          type: integer
+        durationMs:
+          type: integer
+          format: int64
+    AlbumDetail:
+      type: object
+      required: [album, uploadedBy, uploadedAt, tracks]
+      properties:
+        album:
+          $ref: "#/components/schemas/Album"
+        uploadedBy:
+          type: string
+          description: Who uploaded the first track
+        uploadedAt:
+          type: string
+          format: date-time
+          description: When the first track was added
+        tracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Track"
+    Artist:
+      type: object
+      required: [id, name, albumCount, trackCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        albumCount:
+          type: integer
+        trackCount:
+          type: integer
+        coverUrl:
+          type: string
+          description: Cover of one of their albums, when any has one
+    ArtistDetail:
+      type: object
+      required: [artist, albums, tracks]
+      properties:
+        artist:
+          $ref: "#/components/schemas/Artist"
+        albums:
+          type: array
+          items:
+            $ref: "#/components/schemas/Album"
+        tracks:
+          type: array
+          description: All their tracks, singles included
+          items:
+            $ref: "#/components/schemas/Track"
     PlaybackEventRequest:
       description: >
         A playback event as the player reports it. The server adds the user

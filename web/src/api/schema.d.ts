@@ -336,8 +336,85 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Every track in the shared library, newest first */
+        /**
+         * Tracks in the shared library
+         * @description Everything unless limit and offset are given. Sorted by sort (added, newest first; title; or artist), always with a stable tie-break, so pages never overlap or skip. The total is in X-Total-Count.
+         */
         get: operations["listTracks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Albums in the shared library
+         * @description Everything unless limit and offset are given. Sorted by sort (added, newest first; title; or artist) with a stable tie-break. The total is in X-Total-Count.
+         */
+        get: operations["listAlbums"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/albums/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An album and its tracks */
+        get: operations["getAlbum"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/artists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Artists in the shared library, A to Z
+         * @description Everything unless limit and offset are given. The total is in X-Total-Count.
+         */
+        get: operations["listArtists"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/artists/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An artist, their albums and their tracks */
+        get: operations["getArtist"];
         put?: never;
         post?: never;
         delete?: never;
@@ -507,6 +584,10 @@ export interface components {
             id: string;
             title: string;
             artist: string;
+            /** Format: uuid */
+            artistId: string;
+            /** @description Username of who uploaded it */
+            uploadedBy: string;
             album?: string;
             /** Format: uuid */
             albumId?: string;
@@ -525,6 +606,47 @@ export interface components {
             bitrateKbps?: number;
             /** Format: date-time */
             createdAt: string;
+        };
+        Album: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            artist: string;
+            /** Format: uuid */
+            artistId: string;
+            year?: number;
+            coverUrl?: string;
+            /** @description The cover dominant colour as #rrggbb, when it has a cover */
+            dominantColor?: string;
+            trackCount: number;
+            /** Format: int64 */
+            durationMs: number;
+        };
+        AlbumDetail: {
+            album: components["schemas"]["Album"];
+            /** @description Who uploaded the first track */
+            uploadedBy: string;
+            /**
+             * Format: date-time
+             * @description When the first track was added
+             */
+            uploadedAt: string;
+            tracks: components["schemas"]["Track"][];
+        };
+        Artist: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            albumCount: number;
+            trackCount: number;
+            /** @description Cover of one of their albums, when any has one */
+            coverUrl?: string;
+        };
+        ArtistDetail: {
+            artist: components["schemas"]["Artist"];
+            albums: components["schemas"]["Album"][];
+            /** @description All their tracks, singles included */
+            tracks: components["schemas"]["Track"][];
         };
         /** @description A playback event as the player reports it. The server adds the user from the session and stores the whole envelope unchanged. play_completed is the qualifying play: sent once, at 30 seconds or half the track, whichever comes first. */
         PlaybackEventRequest: {
@@ -635,6 +757,9 @@ export interface components {
     };
     responses: never;
     parameters: {
+        /** @description Page size, 1 to 1000. Leave out (with offset) for everything. */
+        PageLimit: number;
+        PageOffset: number;
         /** @description How many to return (default 50, at most 200) */
         Limit: number;
         UploadId: string;
@@ -642,7 +767,10 @@ export interface components {
         InviteToken: string;
     };
     requestBodies: never;
-    headers: never;
+    headers: {
+        /** @description How many there are in all, whatever the page */
+        TotalCount: number;
+    };
     pathItems: never;
 }
 export type $defs = Record<string, never>;
@@ -1292,7 +1420,12 @@ export interface operations {
     };
     listTracks: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page size, 1 to 1000. Leave out (with offset) for everything. */
+                limit?: components["parameters"]["PageLimit"];
+                offset?: components["parameters"]["PageOffset"];
+                sort?: "added" | "title" | "artist";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1302,10 +1435,124 @@ export interface operations {
             /** @description Tracks */
             200: {
                 headers: {
+                    "X-Total-Count": components["headers"]["TotalCount"];
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Track"][];
+                };
+            };
+        };
+    };
+    listAlbums: {
+        parameters: {
+            query?: {
+                /** @description Page size, 1 to 1000. Leave out (with offset) for everything. */
+                limit?: components["parameters"]["PageLimit"];
+                offset?: components["parameters"]["PageOffset"];
+                sort?: "added" | "title" | "artist";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Albums */
+            200: {
+                headers: {
+                    "X-Total-Count": components["headers"]["TotalCount"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Album"][];
+                };
+            };
+        };
+    };
+    getAlbum: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The album */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlbumDetail"];
+                };
+            };
+            /** @description No such album */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listArtists: {
+        parameters: {
+            query?: {
+                /** @description Page size, 1 to 1000. Leave out (with offset) for everything. */
+                limit?: components["parameters"]["PageLimit"];
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Artists */
+            200: {
+                headers: {
+                    "X-Total-Count": components["headers"]["TotalCount"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Artist"][];
+                };
+            };
+        };
+    };
+    getArtist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The artist */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistDetail"];
+                };
+            };
+            /** @description No such artist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

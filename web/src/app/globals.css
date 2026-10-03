@@ -116,3 +116,39 @@ body {
 .slider:active::-moz-range-thumb {
   opacity: 1;
 }
+
+/* Now-playing equalizer (DESIGN.md 4.7): three bars. They hold still when paused or when motion is reduced. */
+.eq-bar {
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--accent);
+  transform-origin: bottom;
+  transform: scaleY(0.4);
+}
+.eq[data-playing="true"] .eq-bar {
+  animation: eq 900ms ease-in-out infinite;
+}
+.eq[data-playing="true"] .eq-bar:nth-child(2) {
+  animation-delay: -300ms;
+  animation-duration: 750ms;
+}
+.eq[data-playing="true"] .eq-bar:nth-child(3) {
+  animation-delay: -600ms;
+  animation-duration: 1050ms;
+}
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eq[data-playing="true"] .eq-bar {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+}

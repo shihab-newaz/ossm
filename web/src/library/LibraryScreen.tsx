@@ -1,158 +1,274 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { ListEnd, ListPlus, Music, Pause, Play, Shuffle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Disc3, Mic2, Play, Shuffle } from "lucide-react";
 import Link from "next/link";
-import { api } from "@/api/client";
-import type { components } from "@/api/schema";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "@/components/ui/toast";
-import { player, usePlayer } from "@/player/player";
+import { player } from "@/player/player";
+import { fetchAllTracks, useAlbumPages, useArtistPages, useTrackPages, type Album, type Artist, type Sort, type Track } from "./data";
+import { playAlbum } from "./playAlbum";
+import { EmptyState, GridSkeleton, ListSkeleton } from "./states";
+import { TrackRow } from "./TrackRow";
+import { VirtualGrid } from "./VirtualGrid";
 
-type Track = components["schemas"]["Track"];
+export { formatDuration } from "./TrackRow";
 
-function useTracks() {
-  return useQuery({
-    queryKey: ["tracks"],
-    queryFn: async () => {
-      const { data } = await api.GET("/api/v1/tracks");
-      if (!data) throw new Error("Could not load your library.");
-      return data;
-    },
-  });
+const TABS = [
+  { id: "tracks", label: "Tracks" },
+  { id: "albums", label: "Albums" },
+  { id: "artists", label: "Artists" },
+] as const;
+type Tab = (typeof TABS)[number]["id"];
+
+const SORTS: { id: Sort; label: string }[] = [
+  { id: "added", label: "Recently added" },
+  { id: "title", label: "Title" },
+  { id: "artist", label: "Artist" },
+];
+
+// The tab lives in the address (?tab=albums), so reloading and sharing the link keep it.
+const tabListeners = new Set<() => void>();
+function subscribeToTab(listener: () => void) {
+  tabListeners.add(listener);
+  window.addEventListener("popstate", listener);
+  return () => {
+    tabListeners.delete(listener);
+    window.removeEventListener("popstate", listener);
+  };
 }
-
-export function formatDuration(ms: number): string {
-  const total = Math.round(ms / 1000);
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+function currentTab(): Tab {
+  const wanted = new URLSearchParams(window.location.search).get("tab");
+  return TABS.find((t) => t.id === wanted)?.id ?? "tracks";
 }
 
 export function LibraryScreen() {
-  const tracks = useTracks();
+  const tab = useSyncExternalStore(subscribeToTab, currentTab, () => "tracks" as Tab);
+  function choose(next: Tab) {
+    const url = new URL(window.location.href);
+    if (next === "tracks") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", next);
+    window.history.replaceState(window.history.state, "", url);
+    tabListeners.forEach((listener) => listener());
+  }
+
   return (
     <div className="flex flex-col gap-6 py-8">
       <h1 className="font-display text-[28px] font-extrabold leading-[34px] tracking-[-0.015em] md:text-4xl md:leading-[42px]">Library</h1>
-      {tracks.isPending ? <Skeleton /> : null}
-      {tracks.isError ? (
-        <p role="alert" className="text-danger">
-          Could not load your library.
-        </p>
-      ) : null}
-      {tracks.data && tracks.data.length === 0 ? <Empty /> : null}
-      {tracks.data && tracks.data.length > 0 ? (
-        <>
-          <div className="flex gap-2">
-            <button
-              onClick={() => void player.playList(tracks.data, 0)}
-              className="flex h-11 items-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.97]"
-            >
-              <Play size={18} aria-hidden fill="currentColor" />
-              Play all
-            </button>
-            <button
-              onClick={() => void player.playList(tracks.data, 0, { shuffle: true, randomStart: true })}
-              className="flex h-11 items-center gap-2 rounded-full border border-border-strong px-5 text-[15px] font-semibold hover:bg-surface-hover"
-            >
-              <Shuffle size={18} aria-hidden />
-              Shuffle all
-            </button>
-          </div>
-          <ul aria-label="Tracks" className="flex flex-col">
-            {tracks.data.map((track, i) => (
-              <TrackRow key={track.id} track={track} onPlay={() => void player.playList(tracks.data, i)} />
-            ))}
-          </ul>
-        </>
-      ) : null}
+      <div role="tablist" aria-label="Library sections" className="flex gap-2">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            id={`tab-${t.id}`}
+            aria-selected={tab === t.id}
+            aria-controls="library-panel"
+            onClick={() => choose(t.id)}
+            className={`h-9 rounded-full px-4 text-[14px] font-semibold ${tab === t.id ? "bg-fg text-bg" : "bg-surface-hover text-fg hover:bg-surface-active"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id="library-panel" aria-labelledby={`tab-${tab}`} className="flex flex-col gap-6">
+        {tab === "tracks" ? <TracksTab /> : tab === "albums" ? <AlbumsTab /> : <ArtistsTab />}
+      </div>
     </div>
   );
 }
 
-function TrackRow({ track, onPlay }: { track: Track; onPlay: () => void }) {
-  const { track: current, status } = usePlayer();
-  const isCurrent = current?.id === track.id;
-  const playing = isCurrent && (status === "playing" || status === "loading");
+/** Asks for the next page when the rows on screen are close to the end of what has loaded. */
+function useLoadMore(loaded: number, query: { hasNextPage: boolean; isFetchingNextPage: boolean; fetchNextPage: () => unknown }) {
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
+  return useCallback(
+    (last: number) => {
+      if (last >= loaded - 20 && hasNextPage && !isFetchingNextPage) void fetchNextPage();
+    },
+    [loaded, hasNextPage, isFetchingNextPage, fetchNextPage],
+  );
+}
+
+function SortSelect({ label, value, onChange }: { label: string; value: Sort; onChange: (sort: Sort) => void }) {
   return (
-    <li className="group flex items-center gap-4 rounded-card px-2 py-2 hover:bg-surface-hover">
-      <button
-        // The row starts the whole list from here; on the track that is already loaded it just pauses or resumes.
-        onClick={() => (isCurrent ? void player.toggle() : onPlay())}
-        aria-label={`${playing ? "Pause" : "Play"} ${track.title}`}
-        className="relative size-10 shrink-0 overflow-hidden rounded-lg"
-      >
-        {track.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- same-origin, cookie-authenticated cover art
-          <img src={track.coverUrl} alt="" className="size-full object-cover" />
-        ) : (
-          <span aria-hidden className="grid size-full place-items-center bg-bg-subtle text-fg-subtle">
-            <Music size={18} />
-          </span>
-        )}
-        <span
-          aria-hidden
-          className={`absolute inset-0 grid place-items-center bg-black/45 text-white ${isCurrent ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}
+    <label className="ml-auto flex items-center gap-2 text-[13px] text-fg-muted">
+      Sort by
+      <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value as Sort)} className="h-9 rounded-full border border-border-strong bg-surface px-3 text-[14px] text-fg">
+        {SORTS.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function LoadError({ what }: { what: string }) {
+  return (
+    <p role="alert" className="text-danger">
+      Could not load your {what}.
+    </p>
+  );
+}
+
+function TracksTab() {
+  const client = useQueryClient();
+  const [sort, setSort] = useState<Sort>("added");
+  const { items, total, query } = useTrackPages(sort);
+  const nearEnd = useLoadMore(items.length, query);
+
+  // Starting from a row plays the whole list in this order, which may be more than has loaded so far.
+  async function start(index: number, opts?: { shuffle?: boolean; randomStart?: boolean }) {
+    try {
+      const tracks: Track[] = items.length >= total ? items : await fetchAllTracks(client, sort);
+      void player.playList(tracks, index, opts);
+    } catch {
+      toast.error("Could not load your library.");
+    }
+  }
+
+  if (query.isPending) return <ListSkeleton />;
+  if (query.isError) return <LoadError what="library" />;
+  if (total === 0) return <EmptyState kind="music" title="Your library is empty" body="Upload some music and it will show up here." />;
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => void start(0)}
+          className="flex h-11 items-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.97]"
         >
-          {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+          <Play size={18} aria-hidden fill="currentColor" />
+          Play all
+        </button>
+        <button
+          onClick={() => void start(0, { shuffle: true, randomStart: true })}
+          className="flex h-11 items-center gap-2 rounded-full border border-border-strong px-5 text-[15px] font-semibold hover:bg-surface-hover"
+        >
+          <Shuffle size={18} aria-hidden />
+          Shuffle all
+        </button>
+        <SortSelect label="Sort tracks" value={sort} onChange={setSort} />
+      </div>
+      <VirtualGrid
+        label="Tracks"
+        count={total}
+        rowHeight={56}
+        onNearEnd={nearEnd}
+        renderItem={(i) => {
+          const track = items[i];
+          return track ? <TrackRow key={track.id} track={track} details onPlay={() => void start(i)} /> : <div className="h-14" aria-hidden />;
+        }}
+      />
+    </>
+  );
+}
+
+function useColumns(): number {
+  const [columns, setColumns] = useState(4);
+  useEffect(() => {
+    const measure = () => {
+      const w = window.innerWidth;
+      setColumns(w < 640 ? 2 : w < 768 ? 3 : w < 1024 ? 4 : w < 1280 ? 5 : 6);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+  return columns;
+}
+
+function AlbumsTab() {
+  const [sort, setSort] = useState<Sort>("added");
+  const { items, total, query } = useAlbumPages(sort);
+  const nearEnd = useLoadMore(items.length, query);
+  const columns = useColumns();
+
+  if (query.isPending) return <GridSkeleton label="Loading your albums" />;
+  if (query.isError) return <LoadError what="albums" />;
+  if (total === 0) return <EmptyState kind="album" title="No albums yet" body="Albums appear here once uploaded tracks have album tags." />;
+  return (
+    <>
+      <div className="flex">
+        <SortSelect label="Sort albums" value={sort} onChange={setSort} />
+      </div>
+      <VirtualGrid
+        label="Albums"
+        count={total}
+        columns={columns}
+        rowHeight={280}
+        gap={16}
+        onNearEnd={nearEnd}
+        renderItem={(i) => (items[i] ? <AlbumCard key={items[i].id} album={items[i]} /> : <div className="aspect-square rounded-card bg-bg-subtle" aria-hidden />)}
+      />
+    </>
+  );
+}
+
+export function Cover({ url, round, className = "" }: { url?: string; round?: boolean; className?: string }) {
+  const shape = round ? "rounded-full" : "rounded-card";
+  return url ? (
+    // eslint-disable-next-line @next/next/no-img-element -- same-origin, cookie-authenticated cover art
+    <img src={url} alt="" loading="lazy" className={`aspect-square w-full object-cover ${shape} ${className}`} />
+  ) : (
+    <span aria-hidden className={`grid aspect-square w-full place-items-center bg-bg-subtle text-fg-subtle ${shape} ${className}`}>
+      {round ? <Mic2 size={32} /> : <Disc3 size={32} />}
+    </span>
+  );
+}
+
+export function AlbumCard({ album }: { album: Album }) {
+  const client = useQueryClient();
+  return (
+    <div className="group relative rounded-card p-2 hover:bg-surface-hover">
+      <Link href={`/albums/${album.id}`} className="flex flex-col gap-2">
+        <Cover url={album.coverUrl} />
+        <span className="min-w-0">
+          <span className="block truncate font-semibold">{album.title}</span>
+          <span className="block truncate text-[13px] text-fg-muted">{[album.year, album.artist].filter(Boolean).join(" · ")}</span>
         </span>
-      </button>
-      <div className="min-w-0 flex-1">
-        <p className={`truncate font-semibold ${isCurrent ? "text-accent" : ""}`}>{track.title}</p>
-        <p className="truncate text-[13px] text-fg-muted">
-          {track.artist}
-          {track.album ? ` · ${track.album}` : ""}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-        <button
-          onClick={() => {
-            void player.playNext(track);
-            toast.info(`“${track.title}” will play next`);
-          }}
-          aria-label={`Play ${track.title} next`}
-          className="grid size-9 place-items-center rounded-full text-fg-muted hover:bg-surface-active"
-        >
-          <ListPlus size={18} aria-hidden />
-        </button>
-        <button
-          onClick={() => {
-            void player.enqueue(track);
-            toast.info(`Added “${track.title}” to the queue`);
-          }}
-          aria-label={`Add ${track.title} to queue`}
-          className="grid size-9 place-items-center rounded-full text-fg-muted hover:bg-surface-active"
-        >
-          <ListEnd size={18} aria-hidden />
-        </button>
-      </div>
-      <span className="font-mono text-[12px] text-fg-muted">{formatDuration(track.durationMs)}</span>
-    </li>
-  );
-}
-
-function Skeleton() {
-  return (
-    <div role="status" aria-label="Loading your library" className="flex flex-col gap-3">
-      {[0, 1, 2, 3, 4].map((n) => (
-        <div key={n} className="flex items-center gap-4 px-2 motion-safe:animate-pulse">
-          <div className="size-10 rounded-lg bg-bg-subtle" />
-          <div className="flex flex-1 flex-col gap-2">
-            <div className="h-3 w-1/3 rounded bg-bg-subtle" />
-            <div className="h-3 w-1/4 rounded bg-bg-subtle" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Empty() {
-  return (
-    <div className="flex flex-col items-start gap-3 py-10">
-      <Music size={64} aria-hidden strokeWidth={1.25} className="text-fg-subtle" />
-      <h2 className="font-display text-xl font-bold">Your library is empty</h2>
-      <p className="text-fg-muted">Upload some music and it will show up here.</p>
-      <Link href="/upload" className="grid h-10 place-items-center rounded-full border border-border-strong px-5 text-[15px] font-semibold hover:bg-surface-hover">
-        Upload music
       </Link>
+      <button
+        onClick={() => void playAlbum(client, album.id)}
+        aria-label={`Play ${album.title}`}
+        className="absolute right-4 top-[calc(100%-5.75rem)] grid size-12 translate-y-2 place-items-center rounded-full bg-accent text-on-accent opacity-0 shadow-[var(--shadow-2)] transition duration-[180ms] ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:translate-y-0 focus-visible:opacity-100 group-hover:translate-y-0 group-hover:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100"
+      >
+        <Play size={20} aria-hidden fill="currentColor" />
+      </button>
     </div>
+  );
+}
+
+function ArtistsTab() {
+  const { items, total, query } = useArtistPages();
+  const nearEnd = useLoadMore(items.length, query);
+
+  if (query.isPending) return <ListSkeleton label="Loading your artists" />;
+  if (query.isError) return <LoadError what="artists" />;
+  if (total === 0) return <EmptyState kind="artist" title="No artists yet" body="Artists appear here once you have uploaded music." />;
+  return (
+    <VirtualGrid
+      label="Artists"
+      count={total}
+      rowHeight={72}
+      onNearEnd={nearEnd}
+      renderItem={(i) => (items[i] ? <ArtistRow key={items[i].id} artist={items[i]} /> : <div className="h-[72px]" aria-hidden />)}
+    />
+  );
+}
+
+function ArtistRow({ artist }: { artist: Artist }) {
+  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  return (
+    <Link href={`/artists/${artist.id}`} className="flex h-[72px] items-center gap-4 rounded-card px-2 hover:bg-surface-hover">
+      <span className="size-14 shrink-0">
+        <Cover url={artist.coverUrl} round />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate font-semibold">{artist.name}</span>
+        <span className="block truncate text-[13px] text-fg-muted">
+          {count(artist.albumCount, "album", "albums")} · {count(artist.trackCount, "track", "tracks")}
+        </span>
+      </span>
+    </Link>
   );
 }

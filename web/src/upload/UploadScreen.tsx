@@ -171,7 +171,7 @@ function Ingest({ uploadId }: { uploadId: string }) {
   });
   const finished = status.data?.status === "DONE";
   useEffect(() => {
-    if (finished) void client.invalidateQueries({ queryKey: ["tracks"] });
+    if (finished) for (const key of ["tracks", "albums", "artists"]) void client.invalidateQueries({ queryKey: [key] });
   }, [finished, client]);
 
   if (status.data?.status === "FAILED") {
