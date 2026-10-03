@@ -2,7 +2,7 @@
 
 **Open Source Streaming Music**: a self-hosted music streaming app for your own files. Spring Boot API, Next.js web UI, Postgres and an S3-compatible object store (SeaweedFS as the reference deployment).
 
-Work is tracked as local markdown: specs in `docs/specs/`, tickets in `docs/tickets/`. Visual design lives in `DESIGN.md`.
+Work is tracked as local markdown: specs in `docs/specs/`, tickets in `docs/tickets/`. Current status is in `PROGRESS.md`. Visual design lives in `DESIGN.md`.
 
 ## Run it
 
@@ -18,7 +18,7 @@ Open http://localhost:8080. Caddy serves everything on one origin: `/api` goes t
 
 | Area | Commands |
 | --- | --- |
-| Backend (`backend/`, Java 25, Gradle) | `./gradlew test` (needs Docker for Testcontainers), `./gradlew spotlessApply`, `./gradlew bootRun` |
+| Backend (`backend/`, Java 25, Gradle) | `./gradlew test` (needs Docker for Testcontainers; also runs the ingest restart tests in a second JVM), `./gradlew spotlessApply`, `./gradlew bootRun` |
 | Web (`web/`, Node 24, pnpm) | `pnpm dev`, `pnpm test`, `pnpm typecheck`, `pnpm lint` |
 
 For `pnpm dev` to show a healthy API, run Postgres and the backend (`docker compose -f deploy/compose.yaml up -d db`, then `./gradlew bootRun`). The dev server proxies `/api` to `http://localhost:8080`; override with `API_ORIGIN`.
@@ -38,6 +38,10 @@ contract/   openapi.yaml, the API contract
 deploy/     compose stack and Caddy config
 docs/       specs, tickets, ADRs, agent docs
 ```
+
+## What it does today
+
+Sign in, upload MP3s, browse the library (tracks, albums, artists, genres), play with a queue, shuffle and repeat, and see an Explore home page. Plays are recorded as events for history and most-played. Search, favorites, playlists and mobile polish are still to come; see `PROGRESS.md`.
 
 ## License
 
