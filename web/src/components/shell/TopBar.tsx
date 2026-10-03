@@ -1,6 +1,7 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { Search, Upload } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AccountMenu } from "./AccountMenu";
 import { ThemeSwitcher } from "./ThemeSwitcher";
@@ -31,6 +32,14 @@ export function TopBar() {
         />
       </form>
       <div className="ml-auto flex items-center gap-2">
+        <Link
+          href="/upload"
+          aria-label="Upload"
+          className="grid size-11 place-items-center rounded-full text-fg-muted hover:bg-surface-hover hover:text-fg sm:size-auto sm:h-10 sm:grid-flow-col sm:gap-2 sm:border sm:border-border-strong sm:px-4 sm:text-fg"
+        >
+          <Upload size={18} aria-hidden />
+          <span className="hidden text-[14px] font-semibold sm:inline">Upload</span>
+        </Link>
         <ThemeSwitcher />
         <AccountMenu />
       </div>

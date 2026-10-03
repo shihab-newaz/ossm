@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(PostgresTestConfiguration.class)
+@Import(TestInfrastructure.class)
 class UserManagementTest {
 
   private static final String PASSWORD = "a long enough password";

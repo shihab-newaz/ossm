@@ -27,6 +27,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     // Argon2PasswordEncoder delegates to BouncyCastle.
     implementation("org.bouncycastle:bcprov-jdk18on:1.86")
+    // Vendor-neutral object store access, and persistent Postgres-backed jobs (core library: no Boot starter).
+    implementation(platform("software.amazon.awssdk:bom:2.55.10"))
+    implementation("software.amazon.awssdk:s3")
+    implementation("com.github.kagkarlsson:db-scheduler:16.12.0")
+    // Tags, cover art and duration on the JVM, no ffmpeg.
+    implementation("net.jthink:jaudiotagger:3.0.1")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
@@ -37,6 +43,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-postgresql")
+    testImplementation("org.testcontainers:testcontainers")
     testImplementation("org.yaml:snakeyaml")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

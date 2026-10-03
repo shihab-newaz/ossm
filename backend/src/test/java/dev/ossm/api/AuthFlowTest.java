@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(PostgresTestConfiguration.class)
+@Import(TestInfrastructure.class)
 class AuthFlowTest {
 
   private static final String LOGIN_OK =

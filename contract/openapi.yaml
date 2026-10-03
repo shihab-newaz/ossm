@@ -292,8 +292,147 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /api/v1/uploads:
+    get:
+      operationId: listUploads
+      summary: Your recent uploads and where each one is
+      responses:
+        "200":
+          description: Newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Upload"
+    post:
+      operationId: createUpload
+      summary: Start a direct-to-storage multipart upload
+      description: >
+        Returns presigned part URLs. The browser PUTs each part straight to the object store, then
+        calls complete. The API never receives the file bytes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUploadRequest"
+      responses:
+        "201":
+          description: Upload started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadTicket"
+        "400":
+          description: Missing file name, or a file larger than 250 MB
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/uploads/{id}:
+    get:
+      operationId: getUpload
+      summary: One of your uploads
+      parameters:
+        - $ref: "#/components/parameters/UploadId"
+      responses:
+        "200":
+          description: The upload and its ingest status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Upload"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/uploads/{id}/complete:
+    post:
+      operationId: completeUpload
+      summary: All parts are uploaded; start ingest
+      parameters:
+        - $ref: "#/components/parameters/UploadId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteUploadRequest"
+      responses:
+        "202":
+          description: Ingest queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Upload"
+        "400":
+          description: The object store rejected the parts
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Already completed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/tracks:
+    get:
+      operationId: listTracks
+      summary: Every track in the shared library, newest first
+      responses:
+        "200":
+          description: Tracks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Track"
+  /api/v1/albums/{id}/cover:
+    get:
+      operationId: getAlbumCover
+      summary: Cover art for an album
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: No such album or no cover
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   parameters:
+    UploadId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     UserId:
       name: id
       in: path
@@ -308,6 +447,120 @@ components:
       schema:
         type: string
   schemas:
+    CreateUploadRequest:
+      type: object
+      required: [filename, sizeBytes]
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 262144000
+    UploadPart:
+      type: object
+      required: [partNumber, url]
+      properties:
+        partNumber:
+          type: integer
+          minimum: 1
+        url:
+          type: string
+          description: Presigned URL to PUT this part to
+    UploadTicket:
+      type: object
+      required: [upload, partSizeBytes, parts]
+      properties:
+        upload:
+          $ref: "#/components/schemas/Upload"
+        partSizeBytes:
+          type: integer
+          format: int64
+        parts:
+          type: array
+          items:
+            $ref: "#/components/schemas/UploadPart"
+    CompletedPart:
+      type: object
+      required: [partNumber, etag]
+      properties:
+        partNumber:
+          type: integer
+          minimum: 1
+        etag:
+          type: string
+    CompleteUploadRequest:
+      type: object
+      required: [parts]
+      properties:
+        parts:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CompletedPart"
+    Upload:
+      type: object
+      required: [id, filename, sizeBytes, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [UPLOADING, INGESTING, DONE, FAILED]
+        error:
+          type: string
+          description: Readable reason, present when status is FAILED
+        trackId:
+          type: string
+          format: uuid
+          description: Present when status is DONE
+        createdAt:
+          type: string
+          format: date-time
+    Track:
+      type: object
+      required: [id, title, artist, durationMs, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+        albumId:
+          type: string
+          format: uuid
+        coverUrl:
+          type: string
+          description: Same-origin path to the album cover, when it has one
+        trackNumber:
+          type: integer
+        year:
+          type: integer
+        genre:
+          type: string
+        durationMs:
+          type: integer
+          format: int64
+        codec:
+          type: string
+        bitrateKbps:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
     UserSummary:
       type: object
       required: [id, username, role, status, createdAt]

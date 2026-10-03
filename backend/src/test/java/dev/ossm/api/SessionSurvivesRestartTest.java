@@ -16,7 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Sessions live in Postgres, so a routine API restart must not log anyone out. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(PostgresTestConfiguration.class)
+@Import(TestInfrastructure.class)
 class SessionSurvivesRestartTest {
 
   @Autowired DataSource dataSource;

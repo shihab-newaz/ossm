@@ -1,9 +1,15 @@
-# One origin: /api goes to the backend, everything else to the Next.js server.
+# One origin: /api goes to the backend, /ossm/* (the bucket) to the object store, the rest to Next.js.
 :80 {
 	encode zstd gzip
 
 	handle /api/* {
 		reverse_proxy api:8080
+	}
+
+	# Presigned upload URLs are signed for this origin, so the store must see the original Host
+	# header and path. Caddy forwards both unchanged. Requests without a valid signature are refused.
+	handle /ossm/* {
+		reverse_proxy storage:8333
 	}
 
 	handle {

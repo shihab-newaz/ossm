@@ -23,6 +23,8 @@ Open http://localhost:8080. Caddy serves everything on one origin: `/api` goes t
 
 For `pnpm dev` to show a healthy API, run Postgres and the backend (`docker compose -f deploy/compose.yaml up -d db`, then `./gradlew bootRun`). The dev server proxies `/api` to `http://localhost:8080`; override with `API_ORIGIN`.
 
+Uploads need the whole compose stack: upload URLs are signed for the address you open the site on and Caddy routes the bucket path to the object store, so they do not work through `pnpm dev` alone. To try the pipeline on real files without putting them in the repo, run `OSSM_AUDIO_DIR=/path/to/music ./gradlew test --tests '*AudioLibrarySmokeTest'` from `backend/` (read-only).
+
 ### API contract
 
 `contract/openapi.yaml` is the source of truth. After editing it, regenerate the web client with `pnpm gen:api` (in `web/`). CI fails if the generated client is stale, or if the running backend exposes different operations than the contract.

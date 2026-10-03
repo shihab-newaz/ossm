@@ -20,7 +20,7 @@ import tools.jackson.databind.ObjectMapper;
  * properties of a schema, without the contract being updated.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(PostgresTestConfiguration.class)
+@Import(TestInfrastructure.class)
 class OpenApiContractTest {
 
   private static final Path CONTRACT = Path.of("..", "contract", "openapi.yaml");

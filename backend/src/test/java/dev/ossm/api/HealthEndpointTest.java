@@ -8,7 +8,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(PostgresTestConfiguration.class)
+@Import(TestInfrastructure.class)
 class HealthEndpointTest {
 
   @LocalServerPort int port;

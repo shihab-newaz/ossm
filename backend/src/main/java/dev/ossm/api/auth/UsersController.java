@@ -2,9 +2,9 @@ package dev.ossm.api.auth;
 
 import dev.ossm.api.auth.Dtos.CreateUserRequest;
 import dev.ossm.api.auth.Dtos.InviteCreated;
-import dev.ossm.api.auth.Dtos.Problem;
 import dev.ossm.api.auth.Dtos.UserSummary;
 import dev.ossm.api.users.Accounts;
+import dev.ossm.api.web.Problem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

@@ -100,8 +100,4 @@ final class Dtos {
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED, format = "password")
           @Size(min = 12, max = 128, message = "New password must be 12 to 128 characters")
           String newPassword) {}
-
-  /** Documents the RFC 9457 body that error responses carry; never instantiated. */
-  @Schema(description = "RFC 9457 problem details")
-  record Problem(String type, String title, Integer status, String detail, String instance) {}
 }

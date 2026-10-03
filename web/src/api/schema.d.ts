@@ -240,10 +240,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your recent uploads and where each one is */
+        get: operations["listUploads"];
+        put?: never;
+        /**
+         * Start a direct-to-storage multipart upload
+         * @description Returns presigned part URLs. The browser PUTs each part straight to the object store, then calls complete. The API never receives the file bytes.
+         */
+        post: operations["createUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of your uploads */
+        get: operations["getUpload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** All parts are uploaded; start ingest */
+        post: operations["completeUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every track in the shared library, newest first */
+        get: operations["listTracks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/albums/{id}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cover art for an album */
+        get: operations["getAlbumCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CreateUploadRequest: {
+            filename: string;
+            /** Format: int64 */
+            sizeBytes: number;
+        };
+        UploadPart: {
+            partNumber: number;
+            /** @description Presigned URL to PUT this part to */
+            url: string;
+        };
+        UploadTicket: {
+            upload: components["schemas"]["Upload"];
+            /** Format: int64 */
+            partSizeBytes: number;
+            parts: components["schemas"]["UploadPart"][];
+        };
+        CompletedPart: {
+            partNumber: number;
+            etag: string;
+        };
+        CompleteUploadRequest: {
+            parts: components["schemas"]["CompletedPart"][];
+        };
+        Upload: {
+            /** Format: uuid */
+            id: string;
+            filename: string;
+            /** Format: int64 */
+            sizeBytes: number;
+            /** @enum {string} */
+            status: "UPLOADING" | "INGESTING" | "DONE" | "FAILED";
+            /** @description Readable reason, present when status is FAILED */
+            error?: string;
+            /**
+             * Format: uuid
+             * @description Present when status is DONE
+             */
+            trackId?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Track: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            artist: string;
+            album?: string;
+            /** Format: uuid */
+            albumId?: string;
+            /** @description Same-origin path to the album cover, when it has one */
+            coverUrl?: string;
+            trackNumber?: number;
+            year?: number;
+            genre?: string;
+            /** Format: int64 */
+            durationMs: number;
+            codec?: string;
+            bitrateKbps?: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
         UserSummary: {
             /** Format: uuid */
             id: string;
@@ -317,6 +467,7 @@ export interface components {
     };
     responses: never;
     parameters: {
+        UploadId: string;
         UserId: string;
         InviteToken: string;
     };
@@ -762,6 +913,194 @@ export interface operations {
                 };
             };
             /** @description Invalid, used or expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listUploads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Upload"][];
+                };
+            };
+        };
+    };
+    createUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Upload started */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadTicket"];
+                };
+            };
+            /** @description Missing file name, or a file larger than 250 MB */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UploadId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The upload and its ingest status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Upload"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    completeUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UploadId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Ingest queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Upload"];
+                };
+            };
+            /** @description The object store rejected the parts */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Already completed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listTracks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tracks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Track"][];
+                };
+            };
+        };
+    };
+    getAlbumCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/*": string;
+                };
+            };
+            /** @description No such album or no cover */
             404: {
                 headers: {
                     [name: string]: unknown;

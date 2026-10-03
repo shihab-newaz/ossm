@@ -34,3 +34,5 @@ Make ingest safe and complete for real-world files: all supported formats, sensi
 
 - Real-audio test library: `H:\AUDIO` on the dev machine (local only, not in the repo, and the files are not to be copied into it). Use it for manual and exploratory checks of this ticket. Automated tests should keep generating small fixture files instead.
 - Contents of `H:\AUDIO` (checked 2026-10-03): mostly MP3 (including 128 and 320 kbps), one FLAC, one M4A, one `.weba` (WebM audio, likely an unsupported-format case), and four album subfolders. Good for exercising mixed formats, nested folders and rejection of unsupported files.
+- Carried over from 05: move audio objects from `audio/<upload-id>.<ext>` to `audio/<aa>/<sha256>.<ext>` once the hash is known (the hash is already stored on the track). Add a unique index on `track.content_hash` for the duplicate check. 05 already enforces the 250 MB limit on client and API, and normalises codec names in `TagReader.codecName`.
+- Smoke check for real files: `OSSM_AUDIO_DIR=H:AUDIO ./gradlew test --tests '*AudioLibrarySmokeTest'` currently reads only `.mp3`; extend its extension list as formats are added.
