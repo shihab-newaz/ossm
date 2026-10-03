@@ -162,19 +162,23 @@ class IngestService {
         .optional();
   }
 
-  /** The same bytes are already in the library: point at that track and drop the extra copy. */
+  /**
+   * The same bytes are already in the library: drop the extra copy, then point the upload at that
+   * track. The object goes first so that anyone who sees DUPLICATE can rely on it being gone; if
+   * the delete fails it is only logged (an orphan object is harmless) and a retry deletes it again.
+   */
   private void markDuplicate(UploadRow upload, UUID existingTrack) {
+    try {
+      s3.deleteObject(b -> b.bucket(bucket.ensure()).key(upload.objectKey()));
+    } catch (RuntimeException e) {
+      log.warn("Could not remove the duplicate object {}: {}", upload.objectKey(), e.toString());
+    }
     jdbc.sql(
             "update upload set status = 'DUPLICATE', track_id = :track, error = null,"
                 + " updated_at = now() where id = :id and status in ('UPLOADING', 'INGESTING')")
         .param("track", existingTrack)
         .param("id", upload.id())
         .update();
-    try {
-      s3.deleteObject(b -> b.bucket(bucket.ensure()).key(upload.objectKey()));
-    } catch (RuntimeException e) {
-      log.warn("Could not remove the duplicate object {}: {}", upload.objectKey(), e.toString());
-    }
     log.info("Upload {} duplicates track {}", upload.id(), existingTrack);
   }
 
