@@ -1,10 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Music } from "lucide-react";
+import { Music, Pause, Play } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
+import { player, usePlayer } from "@/player/player";
 
 type Track = components["schemas"]["Track"];
 
@@ -48,18 +49,33 @@ export function LibraryScreen() {
 }
 
 function TrackRow({ track }: { track: Track }) {
+  const { track: current, status } = usePlayer();
+  const isCurrent = current?.id === track.id;
+  const playing = isCurrent && (status === "playing" || status === "loading");
   return (
-    <li className="flex items-center gap-4 rounded-card px-2 py-2 hover:bg-surface-hover">
-      {track.coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- same-origin, cookie-authenticated cover art
-        <img src={track.coverUrl} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
-      ) : (
-        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg bg-bg-subtle text-fg-subtle">
-          <Music size={18} />
+    <li className="group flex items-center gap-4 rounded-card px-2 py-2 hover:bg-surface-hover">
+      <button
+        onClick={() => (playing ? player.pause() : void player.play(track))}
+        aria-label={`${playing ? "Pause" : "Play"} ${track.title}`}
+        className="relative size-10 shrink-0 overflow-hidden rounded-lg"
+      >
+        {track.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- same-origin, cookie-authenticated cover art
+          <img src={track.coverUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <span aria-hidden className="grid size-full place-items-center bg-bg-subtle text-fg-subtle">
+            <Music size={18} />
+          </span>
+        )}
+        <span
+          aria-hidden
+          className={`absolute inset-0 grid place-items-center bg-black/45 text-white ${isCurrent ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}
+        >
+          {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
         </span>
-      )}
+      </button>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{track.title}</p>
+        <p className={`truncate font-semibold ${isCurrent ? "text-accent" : ""}`}>{track.title}</p>
         <p className="truncate text-[13px] text-fg-muted">
           {track.artist}
           {track.album ? ` · ${track.album}` : ""}

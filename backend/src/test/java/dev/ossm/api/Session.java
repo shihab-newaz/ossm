@@ -26,6 +26,12 @@ final class Session {
         HttpRequest.newBuilder(uri(path)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
   }
 
+  HttpResponse<byte[]> getBytes(String path, String range) throws Exception {
+    return client.send(
+        HttpRequest.newBuilder(uri(path)).header("Range", range).GET().build(),
+        HttpResponse.BodyHandlers.ofByteArray());
+  }
+
   HttpResponse<String> post(String path, String json) throws Exception {
     return send(
         HttpRequest.newBuilder(uri(path))

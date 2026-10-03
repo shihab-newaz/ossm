@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ToastHost } from "@/components/ui/ToastHost";
 import { PlayerBar } from "./PlayerBar";
 import { Sidebar } from "./Sidebar";
 import { TabBar } from "./TabBar";
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <PlayerBar />
       <TabBar />
+      <ToastHost />
     </div>
   );
 }

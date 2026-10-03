@@ -437,6 +437,51 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Track"
+  /api/v1/tracks/{id}/stream:
+    get:
+      operationId: streamTrack
+      summary: The audio of a track, as stored (direct play, no transcoding)
+      description: >
+        Proxied from the private object store. Supports a single byte range
+        (start-end, open-ended, or suffix) so a player can seek. A Range header
+        that is malformed, uses another unit or asks for several ranges is
+        ignored and the whole file is sent.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+          example: bytes=0-1023
+      responses:
+        "200":
+          description: The whole file
+          content:
+            audio/*:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: The requested byte range
+          content:
+            audio/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: No such track, or its file is missing from storage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "416":
+          description: The range starts beyond the end of the file
   /api/v1/albums/{id}/cover:
     get:
       operationId: getAlbumCover

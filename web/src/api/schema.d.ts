@@ -346,6 +346,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tracks/{id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The audio of a track, as stored (direct play, no transcoding)
+         * @description Proxied from the private object store. Supports a single byte range (start-end, open-ended, or suffix) so a player can seek. A Range header that is malformed, uses another unit or asks for several ranges is ignored and the whole file is sent.
+         */
+        get: operations["streamTrack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/albums/{id}/cover": {
         parameters: {
             query?: never;
@@ -1189,6 +1209,56 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Track"][];
                 };
+            };
+        };
+    };
+    streamTrack: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @example bytes=0-1023 */
+                Range?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The whole file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/*": string;
+                };
+            };
+            /** @description The requested byte range */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/*": string;
+                };
+            };
+            /** @description No such track, or its file is missing from storage */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The range starts beyond the end of the file */
+            416: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
