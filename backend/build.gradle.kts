@@ -53,6 +53,24 @@ tasks.withType<Test> {
     inputs.file("../contract/openapi.yaml")
 }
 
+// The restart tests start and stop whole APIs against the shared database and rely on only their
+// own worker picking up ingest jobs. Other test classes leave cached Spring contexts alive in the
+// same JVM, and those schedulers keep polling, so a job could be taken by a stranger and the test
+// flakes. Running them in a JVM of their own removes the competition.
+val restartTests by tasks.registering(Test::class) {
+    description = "Ingest restart and crash-recovery tests, alone in their own JVM."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter { includeTestsMatching("*IngestSurvivesRestartTest") }
+    shouldRunAfter(tasks.test)
+}
+
+tasks.test {
+    filter { excludeTestsMatching("*IngestSurvivesRestartTest") }
+    finalizedBy(restartTests)
+}
+
 spotless {
     java {
         googleJavaFormat()
