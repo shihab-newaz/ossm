@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Field, FormError, PrimaryButton } from "@/components/ui/form";
+import { HealthIndicator } from "@/components/HealthIndicator";
 import { ThemeSwitcher } from "@/components/shell/ThemeSwitcher";
 import { useChangePassword } from "./account";
 
@@ -19,6 +20,12 @@ export function SettingsPage() {
         </div>
       </section>
       <ChangePasswordForm />
+      <section aria-labelledby="status-heading" className="flex flex-col gap-3">
+        <h2 id="status-heading" className="font-display text-xl font-bold">
+          Server status
+        </h2>
+        <HealthIndicator />
+      </section>
     </div>
   );
 }

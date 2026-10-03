@@ -442,6 +442,12 @@ paths:
             type: string
             enum: [added, title, artist]
             default: added
+        - name: genre
+          in: query
+          required: false
+          description: Only tracks of this genre, by its slug from /genres
+          schema:
+            type: string
       responses:
         "200":
           description: Tracks
@@ -484,6 +490,61 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Album"
+  /api/v1/genres:
+    get:
+      operationId: listGenres
+      summary: Genres present in the library
+      description: >
+        Built from the genre tags of the tracks, so there are no empty genres.
+        Spellings that differ only in case, spacing or punctuation are one genre.
+        Most tracks first.
+      responses:
+        "200":
+          description: Genres
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Genre"
+  /api/v1/albums/recent:
+    get:
+      operationId: listRecentlyAdded
+      summary: Albums by when their newest track was added
+      description: >
+        Newest first. An album climbs back to the top when a track is added to
+        it. Tracks without an album are not included.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: How many (default 12, at most 50)
+          schema:
+            type: integer
+            default: 12
+      responses:
+        "200":
+          description: Albums
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Album"
+  /api/v1/albums/featured:
+    get:
+      operationId: getFeatured
+      summary: The album to feature on Explore
+      description: The most recently added album that has a cover. 204 when there is none yet.
+      responses:
+        "200":
+          description: The album
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Album"
+        "204":
+          description: No album has a cover yet
   /api/v1/albums/{id}:
     get:
       operationId: getAlbum
@@ -927,6 +988,21 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Track"
+    Genre:
+      type: object
+      required: [name, slug, trackCount]
+      properties:
+        name:
+          type: string
+          description: As most tracks spell it
+        slug:
+          type: string
+          description: "Stable lower-case id: use it in links and to pick the tile colour"
+        trackCount:
+          type: integer
+        coverUrl:
+          type: string
+          description: Cover of an album with tracks in this genre, when one has a cover
     Artist:
       type: object
       required: [id, name, albumCount, trackCount]

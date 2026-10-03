@@ -38,9 +38,9 @@ function usePaged<T>(key: unknown[], load: (offset: number) => Promise<Page<T>>)
   };
 }
 
-export function useTrackPages(sort: Sort) {
-  return usePaged<Track>(["tracks", "pages", sort], async (offset) => {
-    const { data, response } = await api.GET("/api/v1/tracks", { params: { query: { limit: PAGE_SIZE, offset, sort } } });
+export function useTrackPages(sort: Sort, genre?: string) {
+  return usePaged<Track>(["tracks", "pages", sort, genre ?? null], async (offset) => {
+    const { data, response } = await api.GET("/api/v1/tracks", { params: { query: { limit: PAGE_SIZE, offset, sort, genre } } });
     if (!data) throw new Error("Could not load your library.");
     return page(data, response, offset);
   });
@@ -63,12 +63,12 @@ export function useArtistPages() {
 }
 
 /** Every track in this order, for "Play all" and for starting from a row when not everything is loaded yet. */
-export async function fetchAllTracks(client: QueryClient, sort: Sort): Promise<Track[]> {
+export async function fetchAllTracks(client: QueryClient, sort: Sort, genre?: string): Promise<Track[]> {
   return client.fetchQuery({
-    queryKey: ["tracks", "all", sort],
+    queryKey: ["tracks", "all", sort, genre ?? null],
     staleTime: 10_000,
     queryFn: async () => {
-      const { data } = await api.GET("/api/v1/tracks", { params: { query: { sort } } });
+      const { data } = await api.GET("/api/v1/tracks", { params: { query: { sort, genre } } });
       if (!data) throw new Error("Could not load your library.");
       return data;
     },

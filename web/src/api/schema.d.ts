@@ -369,6 +369,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/genres": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Genres present in the library
+         * @description Built from the genre tags of the tracks, so there are no empty genres. Spellings that differ only in case, spacing or punctuation are one genre. Most tracks first.
+         */
+        get: operations["listGenres"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/albums/recent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Albums by when their newest track was added
+         * @description Newest first. An album climbs back to the top when a track is added to it. Tracks without an album are not included.
+         */
+        get: operations["listRecentlyAdded"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/albums/featured": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The album to feature on Explore
+         * @description The most recently added album that has a cover. 204 when there is none yet.
+         */
+        get: operations["getFeatured"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/albums/{id}": {
         parameters: {
             query?: never;
@@ -632,6 +692,15 @@ export interface components {
              */
             uploadedAt: string;
             tracks: components["schemas"]["Track"][];
+        };
+        Genre: {
+            /** @description As most tracks spell it */
+            name: string;
+            /** @description Stable lower-case id: use it in links and to pick the tile colour */
+            slug: string;
+            trackCount: number;
+            /** @description Cover of an album with tracks in this genre, when one has a cover */
+            coverUrl?: string;
         };
         Artist: {
             /** Format: uuid */
@@ -1425,6 +1494,8 @@ export interface operations {
                 limit?: components["parameters"]["PageLimit"];
                 offset?: components["parameters"]["PageOffset"];
                 sort?: "added" | "title" | "artist";
+                /** @description Only tracks of this genre, by its slug from /genres */
+                genre?: string;
             };
             header?: never;
             path?: never;
@@ -1467,6 +1538,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Album"][];
                 };
+            };
+        };
+    };
+    listGenres: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Genres */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Genre"][];
+                };
+            };
+        };
+    };
+    listRecentlyAdded: {
+        parameters: {
+            query?: {
+                /** @description How many (default 12, at most 50) */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Albums */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Album"][];
+                };
+            };
+        };
+    };
+    getFeatured: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The album */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Album"];
+                };
+            };
+            /** @description No album has a cover yet */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

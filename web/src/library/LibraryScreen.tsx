@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Disc3, Mic2, Play, Shuffle } from "lucide-react";
+import { Disc3, Mic2, Play, Shuffle, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "@/components/ui/toast";
@@ -37,6 +37,9 @@ function subscribeToTab(listener: () => void) {
     window.removeEventListener("popstate", listener);
   };
 }
+function currentGenre(): string | null {
+  return new URLSearchParams(window.location.search).get("genre");
+}
 function currentTab(): Tab {
   const wanted = new URLSearchParams(window.location.search).get("tab");
   return TABS.find((t) => t.id === wanted)?.id ?? "tracks";
@@ -44,12 +47,15 @@ function currentTab(): Tab {
 
 export function LibraryScreen() {
   const tab = useSyncExternalStore(subscribeToTab, currentTab, () => "tracks" as Tab);
-  function choose(next: Tab) {
+  const genre = useSyncExternalStore(subscribeToTab, currentGenre, () => null);
+  function change(edit: (params: URLSearchParams) => void) {
     const url = new URL(window.location.href);
-    if (next === "tracks") url.searchParams.delete("tab");
-    else url.searchParams.set("tab", next);
+    edit(url.searchParams);
     window.history.replaceState(window.history.state, "", url);
     tabListeners.forEach((listener) => listener());
+  }
+  function choose(next: Tab) {
+    change((p) => (next === "tracks" ? p.delete("tab") : p.set("tab", next)));
   }
 
   return (
@@ -71,7 +77,7 @@ export function LibraryScreen() {
         ))}
       </div>
       <div role="tabpanel" id="library-panel" aria-labelledby={`tab-${tab}`} className="flex flex-col gap-6">
-        {tab === "tracks" ? <TracksTab /> : tab === "albums" ? <AlbumsTab /> : <ArtistsTab />}
+        {tab === "tracks" ? <TracksTab genre={genre ?? undefined} onClearGenre={() => change((p) => p.delete("genre"))} /> : tab === "albums" ? <AlbumsTab /> : <ArtistsTab />}
       </div>
     </div>
   );
@@ -111,16 +117,16 @@ function LoadError({ what }: { what: string }) {
   );
 }
 
-function TracksTab() {
+function TracksTab({ genre, onClearGenre }: { genre?: string; onClearGenre: () => void }) {
   const client = useQueryClient();
   const [sort, setSort] = useState<Sort>("added");
-  const { items, total, query } = useTrackPages(sort);
+  const { items, total, query } = useTrackPages(sort, genre);
   const nearEnd = useLoadMore(items.length, query);
 
   // Starting from a row plays the whole list in this order, which may be more than has loaded so far.
   async function start(index: number, opts?: { shuffle?: boolean; randomStart?: boolean }) {
     try {
-      const tracks: Track[] = items.length >= total ? items : await fetchAllTracks(client, sort);
+      const tracks: Track[] = items.length >= total ? items : await fetchAllTracks(client, sort, genre);
       void player.playList(tracks, index, opts);
     } catch {
       toast.error("Could not load your library.");
@@ -129,9 +135,29 @@ function TracksTab() {
 
   if (query.isPending) return <ListSkeleton />;
   if (query.isError) return <LoadError what="library" />;
+  if (total === 0 && genre) {
+    return (
+      <div className="flex flex-col items-start gap-3 py-10">
+        <h2 className="font-display text-xl font-bold">No tracks in that genre</h2>
+        <button onClick={onClearGenre} className="text-accent hover:underline">
+          Show the whole library
+        </button>
+      </div>
+    );
+  }
   if (total === 0) return <EmptyState kind="music" title="Your library is empty" body="Upload some music and it will show up here." />;
   return (
     <>
+      {genre ? (
+        <p className="flex items-center gap-2 text-[14px]">
+          <span className="inline-flex h-8 items-center gap-1 rounded-full bg-fg pl-3.5 pr-1.5 font-semibold text-bg">
+            Genre: {items[0]?.genre ?? genre}
+            <button onClick={onClearGenre} aria-label="Clear the genre filter" className="grid size-6 place-items-center rounded-full hover:bg-white/20">
+              <X size={14} aria-hidden />
+            </button>
+          </span>
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => void start(0)}

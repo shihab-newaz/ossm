@@ -113,7 +113,10 @@ class LibraryController {
       @RequestParam(required = false) Integer offset,
       @RequestParam(defaultValue = "added")
           @Parameter(schema = @Schema(allowableValues = {"added", "title", "artist"}))
-          String sort) {
+          String sort,
+      @RequestParam(required = false)
+          @Parameter(description = "Only tracks of this genre, by its slug from /genres")
+          String genre) {
     var order =
         switch (sort) {
           case "added" -> "t.created_at desc, t.title, t.id";
@@ -123,15 +126,26 @@ class LibraryController {
                   + " t.track_number nulls last, lower(t.title), t.id";
           default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown sort.");
         };
-    var total = jdbc.sql("select count(*) from track").query(Long.class).single();
+    var where =
+        genre == null || genre.isBlank() ? "" : " where " + Genres.slug("t.genre") + " = :genre";
+    var total =
+        jdbc.sql("select count(*) from track t" + where)
+            .param("genre", genre, java.sql.Types.VARCHAR)
+            .query(Long.class)
+            .single();
     var query =
         "select "
             + TRACK_COLUMNS
             + TRACK_JOINS
+            + where
             + " order by "
             + order
             + Paging.clause(limit, offset);
-    var items = jdbc.sql(query).query((rs, i) -> track(rs)).list();
+    var items =
+        jdbc.sql(query)
+            .param("genre", genre, java.sql.Types.VARCHAR)
+            .query((rs, i) -> track(rs))
+            .list();
     return ResponseEntity.ok().header("X-Total-Count", String.valueOf(total)).body(items);
   }
 

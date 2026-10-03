@@ -199,7 +199,7 @@ describe("changing your password", () => {
     await fill(user, "old password here", "a brand new password");
     await user.click(screen.getByRole("button", { name: "Change password" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Password changed");
+    expect(await screen.findByText(/Password changed/)).toBeInTheDocument();
     expect(sent).toEqual({ currentPassword: "old password here", newPassword: "a brand new password" });
     expect(screen.getByLabelText("Current password")).toHaveValue("");
   });

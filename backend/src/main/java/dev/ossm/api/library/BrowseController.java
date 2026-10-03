@@ -68,13 +68,13 @@ class BrowseController {
               description = "All their tracks, singles included")
           List<Track> tracks) {}
 
-  private static final String ALBUM_SELECT =
+  static final String ALBUM_SELECT =
       "select al.id, al.title, a.name as artist, al.artist_id, al.year, al.cover_key,"
           + " al.dominant_color, count(t.id) as track_count,"
           + " coalesce(sum(t.duration_ms), 0) as duration_ms"
           + " from album al join artist a on a.id = al.artist_id"
           + " left join track t on t.album_id = al.id";
-  private static final String ALBUM_GROUP = " group by al.id, a.name";
+  static final String ALBUM_GROUP = " group by al.id, a.name";
 
   private static final String TRACK_ORDER_IN_ALBUM =
       " order by t.disc_number nulls last, t.track_number nulls last, lower(t.title), t.id";
@@ -85,7 +85,7 @@ class BrowseController {
     this.jdbc = jdbc;
   }
 
-  private static Album album(ResultSet rs) throws SQLException {
+  static Album album(ResultSet rs) throws SQLException {
     var id = rs.getObject("id", UUID.class);
     return new Album(
         id,
