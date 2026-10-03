@@ -57,7 +57,8 @@ class UploadsController {
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   UploadTicket create(@Valid @RequestBody CreateUploadRequest body, Authentication authentication) {
-    return uploads.create(currentUser.id(authentication), body.filename(), body.sizeBytes());
+    return uploads.create(
+        currentUser.id(authentication), body.filename(), body.sizeBytes(), body.license());
   }
 
   @Operation(operationId = "getUpload")
@@ -76,6 +77,30 @@ class UploadsController {
     return uploads
         .find(currentUser.id(authentication), id)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such upload."));
+  }
+
+  @Operation(operationId = "retryUpload")
+  @ApiResponses({
+    @ApiResponse(responseCode = "202", description = "Ingest queued again"),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Not found",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = Problem.class))),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Only failed uploads can be retried",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = Problem.class)))
+  })
+  @PostMapping("/{id}/retry")
+  @ResponseStatus(HttpStatus.ACCEPTED)
+  Upload retry(@PathVariable UUID id, Authentication authentication) {
+    return uploads.retry(currentUser.id(authentication), id);
   }
 
   @Operation(operationId = "completeUpload")

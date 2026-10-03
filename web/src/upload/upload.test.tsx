@@ -17,12 +17,13 @@ const storeUrl = (part: number) => `${window.location.origin}/ossm/audio/${UPLOA
 const mp3 = (name = "song.mp3", bytes = 10) => new File([new Uint8Array(bytes)], name, { type: "audio/mpeg" });
 
 /** A mock API and store for one upload split into two 5-byte parts. */
-function mockUpload(options: { statuses?: Array<"INGESTING" | "DONE" | "FAILED">; error?: string; holdSecondPart?: Promise<void> } = {}) {
-  const calls = { created: 0, parts: [] as number[], completed: undefined as unknown };
-  const statuses = [...(options.statuses ?? ["INGESTING", "DONE"])];
+function mockUpload(options: { statuses?: Array<"INGESTING" | "DONE" | "FAILED" | "DUPLICATE">; error?: string; holdSecondPart?: Promise<void> } = {}) {
+  const calls = { created: 0, createBody: undefined as unknown, parts: [] as number[], completed: undefined as unknown };
+  const statuses: string[] = [...(options.statuses ?? ["INGESTING", "DONE"])];
   server.use(
-    http.post("*/api/v1/uploads", async () => {
+    http.post("*/api/v1/uploads", async ({ request }) => {
       calls.created++;
+      calls.createBody = await request.json();
       return HttpResponse.json(
         {
           upload: { ...base, status: "UPLOADING" },
@@ -150,6 +151,83 @@ describe("uploading", () => {
     const list = screen.getByRole("list", { name: "Uploads" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
     expect(await within(list).findAllByText(/Added to your library/, undefined, { timeout: 5000 })).toHaveLength(2);
+  });
+});
+
+describe("license, duplicates and retry", () => {
+  it("sends the default license, or the one chosen before adding files", async () => {
+    const calls = mockUpload({ statuses: ["DONE"] });
+    const user = userEvent.setup();
+    renderUpload();
+
+    await user.upload(screen.getByLabelText("Audio files"), mp3("first.mp3"));
+    await waitFor(() => expect(calls.created).toBe(1), { timeout: 5000 });
+    expect(calls.createBody).toMatchObject({ filename: "first.mp3", license: "All rights reserved" });
+
+    await user.selectOptions(screen.getByLabelText("License"), "CC BY");
+    await user.upload(screen.getByLabelText("Audio files"), mp3("second.mp3"));
+    await waitFor(() => expect(calls.created).toBe(2), { timeout: 5000 });
+    expect(calls.createBody).toMatchObject({ filename: "second.mp3", license: "CC BY" });
+  });
+
+  it("tells the user a duplicate was skipped, and that it is not an error", async () => {
+    mockUpload({ statuses: ["DUPLICATE"] });
+    const user = userEvent.setup();
+    renderUpload();
+
+    await user.upload(screen.getByLabelText("Audio files"), mp3());
+
+    expect(await screen.findByText(/Already in your library/, undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("offers a retry for a failed ingest that works once the cause is fixed", async () => {
+    mockUpload({ statuses: ["FAILED"], error: "The uploaded file could not be found in storage." });
+    let retried = 0;
+    const user = userEvent.setup();
+    renderUpload();
+    await user.upload(screen.getByLabelText("Audio files"), mp3());
+    expect(await screen.findByRole("alert", undefined, { timeout: 5000 })).toHaveTextContent("could not be found in storage");
+
+    // The cause is fixed server-side: after a retry the job runs and finishes.
+    server.use(
+      http.post("*/api/v1/uploads/:id/retry", () => {
+        retried++;
+        return HttpResponse.json({ ...base, status: "INGESTING" }, { status: 202 });
+      }),
+      http.get("*/api/v1/uploads/:id", () => HttpResponse.json({ ...base, status: "DONE", trackId: "t1" })),
+    );
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByText(/Added to your library/, undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(retried).toBe(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows why a retry was refused", async () => {
+    mockUpload({ statuses: ["FAILED"], error: "This isn't a supported audio file." });
+    server.use(http.post("*/api/v1/uploads/:id/retry", () => problem(409, "Conflict", "Only failed uploads can be retried.")));
+    const user = userEvent.setup();
+    renderUpload();
+    await user.upload(screen.getByLabelText("Audio files"), mp3());
+    await screen.findByRole("button", { name: "Retry" }, { timeout: 5000 });
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByText("Only failed uploads can be retried.")).toBeInTheDocument();
+  });
+
+  it("does not offer a retry for a file the browser already refused", async () => {
+    mockUpload();
+    const huge = mp3("huge.mp3");
+    Object.defineProperty(huge, "size", { value: MAX_BYTES + 1 });
+    const user = userEvent.setup();
+    renderUpload();
+
+    await user.upload(screen.getByLabelText("Audio files"), huge);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
 });
 

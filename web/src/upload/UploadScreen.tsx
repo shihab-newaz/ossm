@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, UploadCloud, XCircle } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, Copy, UploadCloud, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { api } from "@/api/client";
-import { rejectionReason, uploadFile, type Upload } from "./uploader";
+import { problemMessage } from "@/auth/session";
+import { DEFAULT_LICENSE, LICENSES, rejectionReason, uploadFile, type License, type Upload } from "./uploader";
 
 type Item =
   | { key: string; name: string; phase: "waiting" }
@@ -13,11 +14,13 @@ type Item =
   | { key: string; name: string; phase: "ingesting"; uploadId: string }
   | { key: string; name: string; phase: "failed"; error: string };
 
-const TERMINAL = ["DONE", "FAILED"];
+const TERMINAL = ["DONE", "FAILED", "DUPLICATE"];
 
 export function UploadScreen() {
   const [items, setItems] = useState<Item[]>([]);
   const [dragging, setDragging] = useState(false);
+  // Applies to files added after it is chosen.
+  const [license, setLicense] = useState<License>(DEFAULT_LICENSE);
   const input = useRef<HTMLInputElement>(null);
   // Files go one after another so a big batch does not saturate the connection.
   const chain = useRef<Promise<void>>(Promise.resolve());
@@ -37,7 +40,7 @@ export function UploadScreen() {
       chain.current = chain.current.then(async () => {
         patch(key, { key, name: file.name, phase: "uploading", progress: 0 });
         try {
-          const upload = await uploadFile(file, (progress) => patch(key, { key, name: file.name, phase: "uploading", progress }));
+          const upload = await uploadFile(file, license, (progress) => patch(key, { key, name: file.name, phase: "uploading", progress }));
           patch(key, { key, name: file.name, phase: "ingesting", uploadId: upload.id });
         } catch (e) {
           patch(key, { key, name: file.name, phase: "failed", error: e instanceof Error ? e.message : "Upload failed." });
@@ -68,7 +71,24 @@ export function UploadScreen() {
       >
         <UploadCloud size={40} aria-hidden className="text-fg-subtle" />
         <p className="font-display text-xl font-bold">Drop music here</p>
-        <p className="text-fg-muted">MP3 files up to 250 MB each.</p>
+        <p className="text-fg-muted">MP3, FLAC, M4A, OGG/Opus or WAV, up to 250 MB each.</p>
+        <div className="flex items-center gap-2 text-[14px]">
+          <label htmlFor="license" className="font-semibold">
+            License
+          </label>
+          <select
+            id="license"
+            value={license}
+            onChange={(e) => setLicense(e.target.value as License)}
+            className="h-10 rounded-card border border-border-strong bg-surface px-3"
+          >
+            {LICENSES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           onClick={() => input.current?.click()}
           className="h-11 rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.97]"
@@ -79,7 +99,7 @@ export function UploadScreen() {
           ref={input}
           type="file"
           multiple
-          accept="audio/*,.mp3"
+          accept="audio/*,.mp3,.flac,.m4a,.ogg,.opus,.wav"
           aria-label="Audio files"
           className="sr-only"
           tabIndex={-1}
@@ -137,12 +157,48 @@ function Ingest({ uploadId }: { uploadId: string }) {
     },
     refetchInterval: (query) => (query.state.data && TERMINAL.includes(query.state.data.status) ? false : 1500),
   });
+  const retry = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await api.POST("/api/v1/uploads/{id}/retry", { params: { path: { id: uploadId } } });
+      if (!data) throw problemMessage(error, "Could not retry this upload.");
+      return data;
+    },
+    onSuccess: (upload) => {
+      client.setQueryData(["upload", uploadId], upload);
+      // Polling stops once an upload is terminal; one fetch starts it again.
+      void status.refetch();
+    },
+  });
   const finished = status.data?.status === "DONE";
   useEffect(() => {
     if (finished) void client.invalidateQueries({ queryKey: ["tracks"] });
   }, [finished, client]);
 
-  if (status.data?.status === "FAILED") return <Failed message={status.data.error ?? "This file could not be processed."} />;
+  if (status.data?.status === "FAILED") {
+    return (
+      <div className="flex flex-col items-start gap-2">
+        <Failed message={retry.error?.message ?? status.data.error ?? "This file could not be processed."} />
+        <button
+          onClick={() => retry.mutate()}
+          disabled={retry.isPending}
+          className="h-9 rounded-full border border-border-strong px-4 text-[14px] font-semibold hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {retry.isPending ? "Retrying…" : "Retry"}
+        </button>
+      </div>
+    );
+  }
+  if (status.data?.status === "DUPLICATE") {
+    return (
+      <p className="flex items-center gap-2 text-fg-muted">
+        <Copy size={18} aria-hidden />
+        Already in your library, so it was skipped.{" "}
+        <Link href="/library" className="text-accent underline">
+          View library
+        </Link>
+      </p>
+    );
+  }
   if (finished) {
     return (
       <p className="flex items-center gap-2 text-success">

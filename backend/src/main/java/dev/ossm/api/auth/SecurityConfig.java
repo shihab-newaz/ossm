@@ -70,7 +70,7 @@ class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/invites/*/accept")
                     .permitAll()
-                    .requestMatchers("/api/v1/users", "/api/v1/users/**")
+                    .requestMatchers("/api/v1/users", "/api/v1/users/**", "/api/v1/admin/**")
                     .hasRole("ADMIN")
                     .anyRequest()
                     .authenticated())

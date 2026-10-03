@@ -35,6 +35,18 @@ class TagReaderTest {
   }
 
   @Test
+  void aMissingBitrateIsEstimatedFromSizeAndDuration() {
+    // 4,472,652 bytes over 282 seconds is about 127 kbps.
+    assertThat(TagReader.effectiveBitrate(null, 4_472_652, 282_000)).isEqualTo(127);
+    assertThat(TagReader.effectiveBitrate(0, 1_000_000, 10_000)).isEqualTo(800);
+    assertThat(TagReader.effectiveBitrate(320, 1, 1))
+        .as("a header value always wins")
+        .isEqualTo(320);
+    assertThat(TagReader.effectiveBitrate(null, 0, 1_000)).isNull();
+    assertThat(TagReader.effectiveBitrate(null, 1_000, 0)).isNull();
+  }
+
+  @Test
   void codecsGetShortStableNames() {
     assertThat(TagReader.codecName("MPEG-1 Layer 3")).isEqualTo("mp3");
     assertThat(TagReader.codecName("mp3")).isEqualTo("mp3");
@@ -53,7 +65,7 @@ class TagReaderTest {
         org.junit.jupiter.api.Assertions.assertThrows(
             TagReader.UnreadableAudioException.class, () -> TagReader.read(file));
 
-    assertThat(error.getMessage()).contains("could not be read as audio");
+    assertThat(error.getMessage()).contains("supported audio file");
   }
 
   @Test

@@ -55,7 +55,13 @@ class UploadService {
     this.queue = queue;
   }
 
-  UploadTicket create(UUID userId, String filename, long sizeBytes) {
+  UploadTicket create(UUID userId, String filename, long sizeBytes, String requestedLicense) {
+    final String license;
+    try {
+      license = Licenses.resolve(requestedLicense);
+    } catch (IllegalArgumentException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
     var bucketName = bucket.ensure();
     var id = UUID.randomUUID();
     var key = "audio/" + id + IngestService.extensionOf(filename);
@@ -67,14 +73,15 @@ class UploadService {
                 .contentType("application/octet-stream")
                 .build());
     jdbc.sql(
-            "insert into upload (id, user_id, filename, size_bytes, object_key, s3_upload_id, status)"
-                + " values (:id, :user, :filename, :size, :key, :s3, 'UPLOADING')")
+            "insert into upload (id, user_id, filename, size_bytes, object_key, s3_upload_id, status,"
+                + " license) values (:id, :user, :filename, :size, :key, :s3, 'UPLOADING', :license)")
         .param("id", id)
         .param("user", userId)
         .param("filename", filename)
         .param("size", sizeBytes)
         .param("key", key)
         .param("s3", multipart.uploadId())
+        .param("license", license)
         .update();
 
     int count = (int) ((sizeBytes + PART_SIZE - 1) / PART_SIZE);
@@ -159,6 +166,28 @@ class UploadService {
                 + " where id = :id and status = 'UPLOADING'")
         .param("id", id)
         .update();
+    return find(userId, id).orElseThrow();
+  }
+
+  /** Puts a failed upload back in the queue, for when the cause (or a transient fault) is gone. */
+  Upload retry(UUID userId, UUID id) {
+    var current =
+        find(userId, id)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such upload."));
+    if (current.status() != UploadStatus.FAILED) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "Only failed uploads can be retried.");
+    }
+    var reopened =
+        jdbc.sql(
+                "update upload set status = 'INGESTING', error = null, updated_at = now()"
+                    + " where id = :id and user_id = :user and status = 'FAILED'")
+            .param("id", id)
+            .param("user", userId)
+            .update();
+    if (reopened == 1) {
+      queue.enqueue(id);
+    }
     return find(userId, id).orElseThrow();
   }
 

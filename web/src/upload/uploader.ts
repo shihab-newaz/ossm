@@ -6,6 +6,10 @@ export type Upload = components["schemas"]["Upload"];
 
 export const MAX_BYTES = 250 * 1024 * 1024;
 
+export type License = NonNullable<components["schemas"]["CreateUploadRequest"]["license"]>;
+export const DEFAULT_LICENSE: License = "All rights reserved";
+export const LICENSES: License[] = ["All rights reserved", "CC BY", "CC BY-SA", "CC BY-NC", "CC BY-ND", "CC BY-NC-SA", "CC BY-NC-ND", "CC0"];
+
 /** Why a file should not even be offered to the server, or null if it looks fine. */
 export function rejectionReason(file: { name: string; size: number }): string | null {
   if (file.size === 0) return "This file is empty.";
@@ -33,8 +37,8 @@ function putPart(url: string, part: Blob, onLoaded: (bytes: number) => void): Pr
  * Uploads one file the way the API expects: ask for presigned part URLs, send each part directly to
  * storage, then say it is complete so ingest can start. Progress is reported as 0..1.
  */
-export async function uploadFile(file: File, onProgress: (fraction: number) => void): Promise<Upload> {
-  const { data: ticket, error } = await api.POST("/api/v1/uploads", { body: { filename: file.name, sizeBytes: file.size } });
+export async function uploadFile(file: File, license: License, onProgress: (fraction: number) => void): Promise<Upload> {
+  const { data: ticket, error } = await api.POST("/api/v1/uploads", { body: { filename: file.name, sizeBytes: file.size, license } });
   if (!ticket) throw problemMessage(error, "Could not start the upload.");
 
   const completed: { partNumber: number; etag: string }[] = [];

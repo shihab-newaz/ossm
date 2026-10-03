@@ -36,6 +36,8 @@ class LibraryController {
       String album,
       UUID albumId,
       String coverUrl,
+      String dominantColor,
+      @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String license,
       Integer trackNumber,
       Integer year,
       String genre,
@@ -59,6 +61,7 @@ class LibraryController {
   List<Track> tracks() {
     return jdbc.sql(
             "select t.id, t.title, a.name as artist, al.title as album, t.album_id, al.cover_key,"
+                + " al.dominant_color, t.license,"
                 + " t.track_number, t.year, t.genre, t.duration_ms, t.codec, t.bitrate_kbps,"
                 + " t.created_at from track t join artist a on a.id = t.artist_id"
                 + " left join album al on al.id = t.album_id order by t.created_at desc, t.title")
@@ -73,6 +76,8 @@ class LibraryController {
                   rs.getString("album"),
                   albumId,
                   hasCover ? "/api/v1/albums/" + albumId + "/cover" : null,
+                  rs.getString("dominant_color"),
+                  rs.getString("license"),
                   (Integer) rs.getObject("track_number"),
                   (Integer) rs.getObject("year"),
                   rs.getString("genre"),

@@ -29,3 +29,5 @@ Users browse their shared library the way they think about music, and every albu
 ## Comments
 
 - Real-audio test library: `H:\AUDIO` on the dev machine (local only, not in the repo, and the files are not to be copied into it). Use it for manual and exploratory checks of this ticket. Automated tests should keep generating small fixture files instead.
+
+- From 05/06: tracks without an album tag have no album (and so no cover or dominant colour); group them as singles. `GET /api/v1/tracks` already returns `license`, `codec`, `bitrateKbps` and the album's `dominantColor` (#rrggbb, when it has a cover; very dark or very light covers need the lightness clamp the album header specifies).

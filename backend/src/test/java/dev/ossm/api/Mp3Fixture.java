@@ -10,10 +10,10 @@ import org.jaudiotagger.tag.FieldKey;
 import org.jaudiotagger.tag.images.ArtworkFactory;
 
 /** Builds tiny but real MP3 files: valid MPEG frames (silence) with ID3 tags and optional cover. */
-final class Mp3Fixture {
+public final class Mp3Fixture {
 
   /** A 1x1 PNG, the cover art. */
-  static final byte[] PNG =
+  public static final byte[] PNG =
       Base64.getDecoder()
           .decode(
               "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
@@ -27,22 +27,23 @@ final class Mp3Fixture {
 
   private Mp3Fixture() {}
 
-  record Tags(
+  /** {@code cover} is PNG bytes to embed, or null for no cover art. */
+  public record Tags(
       String title,
       String artist,
       String album,
       String albumArtist,
       Integer track,
       Integer year,
-      boolean cover) {
+      byte[] cover) {
 
-    static Tags none() {
-      return new Tags(null, null, null, null, null, null, false);
+    public static Tags none() {
+      return new Tags(null, null, null, null, null, null, null);
     }
   }
 
   /** About 5 seconds of audio. */
-  static byte[] mp3(Tags tags) throws IOException {
+  public static byte[] mp3(Tags tags) throws IOException {
     return mp3(tags, 200);
   }
 
@@ -63,7 +64,7 @@ final class Mp3Fixture {
           tags.title() != null
               || tags.artist() != null
               || tags.album() != null
-              || tags.cover()
+              || tags.cover() != null
               || tags.track() != null
               || tags.year() != null;
       if (hasTags) {
@@ -76,9 +77,9 @@ final class Mp3Fixture {
         set(tag, FieldKey.TRACK, tags.track() == null ? null : String.valueOf(tags.track()));
         set(tag, FieldKey.TRACK_TOTAL, tags.track() == null ? null : "12");
         set(tag, FieldKey.YEAR, tags.year() == null ? null : String.valueOf(tags.year()));
-        if (tags.cover()) {
+        if (tags.cover() != null) {
           var art = ArtworkFactory.getNew();
-          art.setBinaryData(PNG);
+          art.setBinaryData(tags.cover());
           art.setMimeType("image/png");
           art.setPictureType(3);
           tag.setField(art);

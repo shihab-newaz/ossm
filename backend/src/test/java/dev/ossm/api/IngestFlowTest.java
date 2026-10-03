@@ -50,7 +50,8 @@ class IngestFlowTest {
     var user = loggedInAdmin();
     var mp3 =
         Mp3Fixture.mp3(
-            new Tags("Midnight City", "M83", "Hurry Up, We're Dreaming", null, 3, 2011, true));
+            new Tags(
+                "Midnight City", "M83", "Hurry Up, We're Dreaming", null, 3, 2011, Mp3Fixture.PNG));
 
     var started = StoreClient.start(user, "Midnight City.mp3", mp3.length);
 
@@ -96,7 +97,14 @@ class IngestFlowTest {
     for (var n : new int[] {1, 2}) {
       var mp3 =
           Mp3Fixture.mp3(
-              new Tags("Song " + n, "  Daft  Punk ", "Discovery", null, n, 2001, n == 1));
+              new Tags(
+                  "Song " + n,
+                  "  Daft  Punk ",
+                  "Discovery",
+                  null,
+                  n,
+                  2001,
+                  n == 1 ? Mp3Fixture.PNG : null));
       StoreClient.awaitFinished(user, StoreClient.upload(user, "song" + n + ".mp3", mp3));
     }
 
@@ -134,7 +142,7 @@ class IngestFlowTest {
         StoreClient.upload(user, "notes.mp3", "this is just text, not audio".repeat(50).getBytes());
 
     var finished = StoreClient.awaitFinished(user, id);
-    assertThat(finished).contains("\"status\":\"FAILED\"").contains("could not be read as audio");
+    assertThat(finished).contains("\"status\":\"FAILED\"").contains("supported audio file");
     assertThat(user.get("/api/v1/tracks").body()).isEqualTo("[]");
   }
 
@@ -186,7 +194,7 @@ class IngestFlowTest {
         StoreClient.upload(
             admin,
             "a.mp3",
-            Mp3Fixture.mp3(new Tags("Shared Song", "Someone", null, null, null, null, false))));
+            Mp3Fixture.mp3(new Tags("Shared Song", "Someone", null, null, null, null, null))));
 
     assertThat(grace.get("/api/v1/tracks").body()).contains("Shared Song");
   }

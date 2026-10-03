@@ -1,30 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { useMe } from "@/auth/session";
 import { Field, FormError, PrimaryButton } from "@/components/ui/form";
+import { AdminGate } from "./AdminGate";
 import { useCreateUser, useReissueInvite, useSetActive, useUsers, type InviteCreated, type UserSummary } from "./users";
 
 const STATUS_LABEL = { ACTIVE: "Active", INVITED: "Invited", DEACTIVATED: "Deactivated" } as const;
 
 export function UsersAdmin() {
-  const me = useMe().data;
+  return <AdminGate>{(adminId) => <Users adminId={adminId} />}</AdminGate>;
+}
+
+function Users({ adminId }: { adminId: string }) {
   const users = useUsers();
   const [invite, setInvite] = useState<InviteCreated | null>(null);
-
-  // The API refuses non-admins too; this just keeps the page from pretending to exist for them.
-  if (me && me.role !== "ADMIN") {
-    return (
-      <div className="flex flex-col items-start gap-3 py-10">
-        <h1 className="font-display text-[28px] font-extrabold leading-[34px] tracking-[-0.015em]">Page not found</h1>
-        <p className="text-fg-muted">There is nothing here for your account.</p>
-        <Link href="/" className="text-accent underline">
-          Back to home
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-8 py-8">
@@ -32,7 +21,7 @@ export function UsersAdmin() {
       <InviteForm onInvited={setInvite} />
       {invite ? <InviteLink invite={invite} onDismiss={() => setInvite(null)} /> : null}
       {users.isError ? <FormError>Could not load users.</FormError> : null}
-      {users.data ? <UserList users={users.data} selfId={me?.id} onInvite={setInvite} /> : <p className="text-fg-subtle">Loading…</p>}
+      {users.data ? <UserList users={users.data} selfId={adminId} onInvite={setInvite} /> : <p className="text-fg-subtle">Loading…</p>}
     </div>
   );
 }

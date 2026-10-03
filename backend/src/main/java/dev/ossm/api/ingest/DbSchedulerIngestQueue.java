@@ -29,7 +29,7 @@ class DbSchedulerIngestQueue implements IngestQueue, SmartLifecycle {
   DbSchedulerIngestQueue(DataSource dataSource, IngestProperties properties, IngestService ingest) {
     this.task =
         Tasks.oneTime(TASK_NAME, Void.class)
-            .onFailure(new FailureHandler.OnFailureRetryLater<>(Duration.ofSeconds(30)))
+            .onFailure(retryWithBackoff(ingest))
             .execute((instance, context) -> ingest.ingest(UUID.fromString(instance.getId())));
     this.scheduler =
         Scheduler.create(dataSource, task)
@@ -40,6 +40,23 @@ class DbSchedulerIngestQueue implements IngestQueue, SmartLifecycle {
             .enableImmediateExecution()
             .build();
     this.runJobs = properties.enabled();
+  }
+
+  /**
+   * Unexpected failures (the store or database is briefly unavailable) are retried with backoff.
+   * When the attempts run out the upload is marked failed, with a reason the user can see and a
+   * retry button, and the job is dropped.
+   */
+  private static FailureHandler<Void> retryWithBackoff(IngestService ingest) {
+    return (complete, operations) -> {
+      int failures = complete.getExecution().consecutiveFailures + 1;
+      if (RetryPolicy.shouldRetry(failures)) {
+        operations.reschedule(complete, Instant.now().plus(RetryPolicy.delayAfter(failures)));
+      } else {
+        ingest.giveUp(UUID.fromString(complete.getExecution().taskInstance.getId()));
+        operations.stop();
+      }
+    };
   }
 
   @Override

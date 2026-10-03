@@ -386,6 +386,44 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /api/v1/uploads/{id}/retry:
+    post:
+      operationId: retryUpload
+      summary: Try ingesting a failed upload again
+      parameters:
+        - $ref: "#/components/parameters/UploadId"
+      responses:
+        "202":
+          description: Ingest queued again
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Upload"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Only failed uploads can be retried
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/admin/ingest-failures:
+    get:
+      operationId: listIngestFailures
+      summary: Failed uploads from everyone (admin)
+      responses:
+        "200":
+          description: Most recent first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IngestFailure"
   /api/v1/tracks:
     get:
       operationId: listTracks
@@ -460,6 +498,10 @@ components:
           format: int64
           minimum: 1
           maximum: 262144000
+        license:
+          type: string
+          description: Defaults to All rights reserved
+          enum: [All rights reserved, CC BY, CC BY-SA, CC BY-NC, CC BY-ND, CC BY-NC-SA, CC BY-NC-ND, CC0]
     UploadPart:
       type: object
       required: [partNumber, url]
@@ -515,20 +557,36 @@ components:
           format: int64
         status:
           type: string
-          enum: [UPLOADING, INGESTING, DONE, FAILED]
+          enum: [UPLOADING, INGESTING, DONE, FAILED, DUPLICATE]
         error:
           type: string
           description: Readable reason, present when status is FAILED
         trackId:
           type: string
           format: uuid
-          description: Present when status is DONE
+          description: Present when status is DONE, or DUPLICATE (the track already in the library)
         createdAt:
+          type: string
+          format: date-time
+    IngestFailure:
+      type: object
+      required: [uploadId, filename, error, username, failedAt]
+      properties:
+        uploadId:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        error:
+          type: string
+        username:
+          type: string
+        failedAt:
           type: string
           format: date-time
     Track:
       type: object
-      required: [id, title, artist, durationMs, createdAt]
+      required: [id, title, artist, durationMs, license, createdAt]
       properties:
         id:
           type: string
@@ -545,6 +603,12 @@ components:
         coverUrl:
           type: string
           description: Same-origin path to the album cover, when it has one
+        dominantColor:
+          type: string
+          description: "The album cover's dominant colour as #rrggbb, when it has a cover"
+        license:
+          type: string
+          enum: [All rights reserved, CC BY, CC BY-SA, CC BY-NC, CC BY-ND, CC BY-NC-SA, CC BY-NC-ND, CC0]
         trackNumber:
           type: integer
         year:

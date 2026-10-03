@@ -10,10 +10,12 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -31,8 +33,6 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 class IngestService {
 
   private static final Logger log = LoggerFactory.getLogger(IngestService.class);
-  private static final String UNKNOWN_ARTIST = "Unknown Artist";
-  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
   private static final Pattern SAFE_EXTENSION = Pattern.compile("\\.[a-z0-9]{1,5}");
 
   private final JdbcClient jdbc;
@@ -48,12 +48,18 @@ class IngestService {
   }
 
   private record UploadRow(
-      UUID id, UUID userId, String filename, long sizeBytes, String objectKey, String status) {}
+      UUID id,
+      UUID userId,
+      String filename,
+      long sizeBytes,
+      String objectKey,
+      String status,
+      String license) {}
 
   void ingest(UUID uploadId) {
     var upload =
         jdbc.sql(
-                "select id, user_id, filename, size_bytes, object_key, status from upload"
+                "select id, user_id, filename, size_bytes, object_key, status, license from upload"
                     + " where id = :id")
             .param("id", uploadId)
             .query(
@@ -64,19 +70,27 @@ class IngestService {
                         rs.getString("filename"),
                         rs.getLong("size_bytes"),
                         rs.getString("object_key"),
-                        rs.getString("status")))
+                        rs.getString("status"),
+                        rs.getString("license")))
             .optional();
     if (upload.isEmpty()
-        || upload.get().status().equals("DONE")
-        || upload.get().status().equals("FAILED")) {
+        || !(upload.get().status().equals("UPLOADING")
+            || upload.get().status().equals("INGESTING"))) {
       return;
     }
     var row = upload.get();
     Path dir = null;
     try {
       dir = Files.createTempDirectory("ossm-ingest");
-      var file = dir.resolve("audio" + extensionOf(row.filename()));
-      var sha256 = download(row.objectKey(), file);
+      var downloaded = dir.resolve("upload.bin");
+      var sha256 = download(row.objectKey(), downloaded);
+      // What the bytes are decides how they are read; the uploaded file name is never trusted.
+      var format = AudioSniffer.detect(downloaded);
+      if (format.isEmpty()) {
+        fail(uploadId, TagReader.UNSUPPORTED);
+        return;
+      }
+      var file = Files.move(downloaded, dir.resolve("audio" + format.get().extension()));
       final TagReader.Parsed parsed;
       try {
         parsed = TagReader.read(file);
@@ -88,9 +102,22 @@ class IngestService {
         fail(uploadId, e.getMessage());
         return;
       }
+      var existing = trackWithHash(sha256);
+      if (existing.isPresent()) {
+        markDuplicate(row, existing.get());
+        return;
+      }
       var coverKey = parsed.cover() == null ? null : storeCover(parsed.cover());
-      transaction.executeWithoutResult(status -> persist(row, parsed, sha256, coverKey));
-      log.info("Ingested upload {} ({} ms)", uploadId, parsed.durationMs());
+      var dominantColor =
+          parsed.cover() == null ? null : DominantColor.of(parsed.cover().bytes()).orElse(null);
+      try {
+        transaction.executeWithoutResult(
+            status -> persist(row, parsed, sha256, coverKey, dominantColor));
+        log.info("Ingested upload {} ({} ms)", uploadId, parsed.durationMs());
+      } catch (DuplicateKeyException race) {
+        // Two identical files were ingested at the same moment; the other one won.
+        markDuplicate(row, trackWithHash(sha256).orElseThrow(() -> race));
+      }
     } catch (NoSuchKeyException e) {
       fail(uploadId, "The uploaded file could not be found in storage.");
     } catch (IOException e) {
@@ -128,15 +155,53 @@ class IngestService {
     return key;
   }
 
-  private void persist(UploadRow upload, TagReader.Parsed tags, String sha256, String coverKey) {
-    var artistId = upsertArtist(orDefault(tags.artist(), UNKNOWN_ARTIST));
+  private Optional<UUID> trackWithHash(String sha256) {
+    return jdbc.sql("select id from track where content_hash = :hash")
+        .param("hash", sha256)
+        .query(UUID.class)
+        .optional();
+  }
+
+  /** The same bytes are already in the library: point at that track and drop the extra copy. */
+  private void markDuplicate(UploadRow upload, UUID existingTrack) {
+    jdbc.sql(
+            "update upload set status = 'DUPLICATE', track_id = :track, error = null,"
+                + " updated_at = now() where id = :id and status in ('UPLOADING', 'INGESTING')")
+        .param("track", existingTrack)
+        .param("id", upload.id())
+        .update();
+    try {
+      s3.deleteObject(b -> b.bucket(bucket.ensure()).key(upload.objectKey()));
+    } catch (RuntimeException e) {
+      log.warn("Could not remove the duplicate object {}: {}", upload.objectKey(), e.toString());
+    }
+    log.info("Upload {} duplicates track {}", upload.id(), existingTrack);
+  }
+
+  /** Called by the queue when every automatic retry has been used up. */
+  void giveUp(UUID uploadId) {
+    fail(
+        uploadId,
+        "We couldn't process this file because of a temporary problem. You can try again.");
+  }
+
+  private void persist(
+      UploadRow upload,
+      TagReader.Parsed tags,
+      String sha256,
+      String coverKey,
+      String dominantColor) {
+    var artistId = upsertArtist(TagFallbacks.artist(tags.artist()));
     UUID albumId = null;
     if (tags.album() != null) {
       var albumArtistId = tags.albumArtist() == null ? artistId : upsertArtist(tags.albumArtist());
       albumId = upsertAlbum(tags.album(), albumArtistId, tags.year());
       if (coverKey != null) {
-        jdbc.sql("update album set cover_key = :key where id = :id and cover_key is null")
+        jdbc.sql(
+                "update album set cover_key = :key, dominant_color = :color"
+                    + " where id = :id and cover_key is null")
             .param("key", coverKey)
+            .param("color", dominantColor)
             .param("id", albumId)
             .update();
       }
@@ -145,10 +210,11 @@ class IngestService {
     jdbc.sql(
             "insert into track (id, title, artist_id, album_id, track_number, disc_number, year,"
                 + " genre, duration_ms, codec, bitrate_kbps, content_hash, object_key, size_bytes,"
-                + " uploader_id) values (:id, :title, :artist, :album, :trackNumber, :discNumber,"
-                + " :year, :genre, :duration, :codec, :bitrate, :hash, :objectKey, :size, :uploader)")
+                + " license, uploader_id) values (:id, :title, :artist, :album, :trackNumber,"
+                + " :discNumber, :year, :genre, :duration, :codec, :bitrate, :hash, :objectKey,"
+                + " :size, :license, :uploader)")
         .param("id", trackId)
-        .param("title", orDefault(tags.title(), stem(upload.filename())))
+        .param("title", TagFallbacks.title(tags.title(), upload.filename()))
         .param("artist", artistId)
         .param("album", albumId)
         .param("trackNumber", tags.trackNumber())
@@ -161,6 +227,7 @@ class IngestService {
         .param("hash", sha256)
         .param("objectKey", upload.objectKey())
         .param("size", upload.sizeBytes())
+        .param("license", upload.license())
         .param("uploader", upload.userId())
         .update();
     var finished =
@@ -182,7 +249,7 @@ class IngestService {
                 + " on conflict (name_key) do update set name = artist.name returning id")
         .param("id", UUID.randomUUID())
         .param("name", name)
-        .param("key", key(name))
+        .param("key", TagFallbacks.key(name))
         .query(UUID.class)
         .single();
   }
@@ -195,7 +262,7 @@ class IngestService {
                 + " do update set year = coalesce(album.year, excluded.year) returning id")
         .param("id", UUID.randomUUID())
         .param("title", title)
-        .param("key", key(title))
+        .param("key", TagFallbacks.key(title))
         .param("artist", artistId)
         .param("year", year)
         .query(UUID.class)
@@ -211,11 +278,6 @@ class IngestService {
         .update();
   }
 
-  /** Names match regardless of case and spacing: "Daft Punk" and " daft punk" are one artist. */
-  static String key(String name) {
-    return WHITESPACE.matcher(name.strip()).replaceAll(" ").toLowerCase(Locale.ROOT);
-  }
-
   static String extensionOf(String filename) {
     var dot = filename.lastIndexOf('.');
     if (dot < 0) {
@@ -223,17 +285,6 @@ class IngestService {
     }
     var extension = filename.substring(dot).toLowerCase(Locale.ROOT);
     return SAFE_EXTENSION.matcher(extension).matches() ? extension : ".bin";
-  }
-
-  private static String stem(String filename) {
-    var name = filename.substring(filename.lastIndexOf('/') + 1);
-    var dot = name.lastIndexOf('.');
-    var stem = dot > 0 ? name.substring(0, dot) : name;
-    return stem.isBlank() ? "Untitled" : stem.strip();
-  }
-
-  private static String orDefault(String value, String fallback) {
-    return value == null || value.isBlank() ? fallback : value;
   }
 
   private static String extensionFor(String mimeType) {

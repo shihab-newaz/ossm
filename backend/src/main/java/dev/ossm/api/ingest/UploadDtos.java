@@ -23,7 +23,8 @@ final class UploadDtos {
     UPLOADING,
     INGESTING,
     DONE,
-    FAILED
+    FAILED,
+    DUPLICATE
   }
 
   record CreateUploadRequest(
@@ -35,7 +36,20 @@ final class UploadDtos {
           @NotNull(message = "File size is missing")
           @Min(value = 1, message = "That file is empty")
           @Max(value = MAX_BYTES, message = "Files can be at most 250 MB")
-          Long sizeBytes) {}
+          Long sizeBytes,
+      @Schema(
+              description = "Defaults to All rights reserved",
+              allowableValues = {
+                "All rights reserved",
+                "CC BY",
+                "CC BY-SA",
+                "CC BY-NC",
+                "CC BY-ND",
+                "CC BY-NC-SA",
+                "CC BY-NC-ND",
+                "CC0"
+              })
+          String license) {}
 
   record Upload(
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID id,

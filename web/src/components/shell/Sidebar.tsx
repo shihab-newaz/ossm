@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users } from "lucide-react";
+import { AlertTriangle, Users } from "lucide-react";
 import { useMe } from "@/auth/session";
 import { isActive, navItems } from "./nav";
 
@@ -46,6 +46,14 @@ export function Sidebar() {
           >
             <Users size={20} aria-hidden className="group-aria-[current=page]:text-accent" />
             Users
+          </Link>
+          <Link
+            href="/admin/ingest"
+            aria-current={isActive(pathname, "/admin/ingest") ? "page" : undefined}
+            className="group flex h-10 items-center gap-3 rounded-card px-3 text-[15px] font-medium text-fg-muted hover:bg-surface-hover aria-[current=page]:bg-surface-active aria-[current=page]:text-fg"
+          >
+            <AlertTriangle size={20} aria-hidden className="group-aria-[current=page]:text-accent" />
+            Failed uploads
           </Link>
         </nav>
       ) : null}

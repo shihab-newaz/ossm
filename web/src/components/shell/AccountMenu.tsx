@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Settings, Users } from "lucide-react";
+import { AlertTriangle, LogOut, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useLogout, useMe } from "@/auth/session";
@@ -61,6 +61,12 @@ export function AccountMenu() {
             <Link role="menuitem" href="/admin/users" onClick={() => setOpen(false)} className="flex h-10 items-center gap-3 rounded-lg px-3 hover:bg-surface-hover">
               <Users size={18} aria-hidden />
               Manage users
+            </Link>
+          ) : null}
+          {user.role === "ADMIN" ? (
+            <Link role="menuitem" href="/admin/ingest" onClick={() => setOpen(false)} className="flex h-10 items-center gap-3 rounded-lg px-3 hover:bg-surface-hover">
+              <AlertTriangle size={18} aria-hidden />
+              Failed uploads
             </Link>
           ) : null}
           <button

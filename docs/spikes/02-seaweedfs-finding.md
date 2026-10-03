@@ -25,7 +25,7 @@ The 2025 SDK default (CRC32 on every request) works against SeaweedFS 4.48. The 
 ## Conventions to adopt
 
 - One bucket, `ossm`, configurable. Don't create a bucket per user or per kind of file.
-- Keys are content-addressed: `audio/<first-2-hex>/<sha256>.<ext>` and `covers/<first-2-hex>/<sha256>.<ext>`. The hash is also the dedupe key. The fan-out prefix keeps listings small.
+- Cover keys are content-addressed: `covers/<first-2-hex>/<sha256>.<ext>`. (The spike proposed the same for audio; ingest instead keeps `audio/<upload-id>.<ext>` and dedupes on the hash stored in Postgres. See ADR 0005.)
 - Set `Content-Type` on upload (`audio/mpeg`, `audio/flac`, `image/jpeg`). Keep the original filename in Postgres, not in object metadata; metadata worked, but Postgres is the system of record.
 - Postgres holds the key and metadata, never a URL. Presign at request time.
 

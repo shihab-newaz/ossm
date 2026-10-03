@@ -23,9 +23,16 @@ final class StoreClient {
   private StoreClient() {}
 
   static Started start(Session session, String filename, long size) throws Exception {
+    return start(session, filename, size, null);
+  }
+
+  static Started start(Session session, String filename, long size, String license)
+      throws Exception {
+    var licenseJson = license == null ? "" : ",\"license\":\"%s\"".formatted(license);
     var response =
         session.post(
-            "/api/v1/uploads", "{\"filename\":\"%s\",\"sizeBytes\":%d}".formatted(filename, size));
+            "/api/v1/uploads",
+            "{\"filename\":\"%s\",\"sizeBytes\":%d%s}".formatted(filename, size, licenseJson));
     assertThat(response.statusCode()).as(response.body()).isEqualTo(201);
     var urls = new ArrayList<String>();
     var matcher = Pattern.compile("\"url\":\"([^\"]+)\"").matcher(response.body());
@@ -63,7 +70,12 @@ final class StoreClient {
 
   /** A whole upload: start, send, complete. Returns the upload id. */
   static String upload(Session session, String filename, byte[] file) throws Exception {
-    var started = start(session, filename, file.length);
+    return upload(session, filename, file, null);
+  }
+
+  static String upload(Session session, String filename, byte[] file, String license)
+      throws Exception {
+    var started = start(session, filename, file.length, license);
     var complete =
         session.post(
             "/api/v1/uploads/" + started.uploadId() + "/complete", putParts(started, file));
@@ -77,7 +89,7 @@ final class StoreClient {
     String body;
     do {
       body = session.get("/api/v1/uploads/" + uploadId).body();
-      if (body.contains("\"status\":\"DONE\"") || body.contains("\"status\":\"FAILED\"")) {
+      if (body.matches("(?s).*\"status\":\"(DONE|FAILED|DUPLICATE)\".*")) {
         return body;
       }
       Thread.sleep(250);
