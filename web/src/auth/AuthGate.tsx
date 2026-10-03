@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
+import { reporter } from "@/events/reporter";
 import { player } from "@/player/player";
 import { consumeLoggedOutOnPurpose, useMe, useSetupStatus } from "./session";
 
@@ -16,9 +17,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const signedOut = me.data === null;
   const setup = useSetupStatus(signedOut);
 
-  // Nobody is signed in: stop the music and forget the queue, so it is not left playing behind the login page or inherited by the next person.
+  // Nobody is signed in: stop the music, forget the queue and any unsent playback events, so it is not left playing behind the login page or inherited by the next person.
   useEffect(() => {
-    if (signedOut) player.stop();
+    if (!signedOut) return;
+    player.stop();
+    reporter.clear();
   }, [signedOut]);
 
   useEffect(() => {

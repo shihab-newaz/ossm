@@ -366,6 +366,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/playback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report a playback event
+         * @description Idempotent by event id: sending the same event again answers 202 and stores nothing.
+         */
+        post: operations["recordPlaybackEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your recent plays, newest first
+         * @description One entry per qualifying play, so a track played twice appears twice.
+         */
+        get: operations["listHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/history/most-played": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your most played tracks
+         * @description Counts your qualifying plays per track, highest first.
+         */
+        get: operations["listMostPlayed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/albums/{id}/cover": {
         parameters: {
             query?: never;
@@ -466,6 +526,42 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        /** @description A playback event as the player reports it. The server adds the user from the session and stores the whole envelope unchanged. play_completed is the qualifying play: sent once, at 30 seconds or half the track, whichever comes first. */
+        PlaybackEventRequest: {
+            /**
+             * Format: uuid
+             * @description Chosen by the client. Sending the same id again is harmless.
+             */
+            eventId: string;
+            /** @description Envelope version. Currently 1. */
+            schemaVersion: number;
+            /** Format: uuid */
+            trackId: string;
+            /** @enum {string} */
+            type: "play_started" | "play_completed" | "skipped";
+            /**
+             * Format: date-time
+             * @description When it happened on the client
+             */
+            occurredAt: string;
+            /**
+             * Format: int64
+             * @description Playback position in milliseconds when it happened
+             */
+            positionMs: number;
+            /** @description Identifies the app instance, for example a per-browser random id */
+            clientId: string;
+        };
+        Play: {
+            track: components["schemas"]["Track"];
+            /** Format: date-time */
+            playedAt: string;
+        };
+        MostPlayed: {
+            track: components["schemas"]["Track"];
+            /** Format: int64 */
+            plays: number;
+        };
         UserSummary: {
             /** Format: uuid */
             id: string;
@@ -539,6 +635,8 @@ export interface components {
     };
     responses: never;
     parameters: {
+        /** @description How many to return (default 50, at most 200) */
+        Limit: number;
         UploadId: string;
         UserId: string;
         InviteToken: string;
@@ -1259,6 +1357,101 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    recordPlaybackEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaybackEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted (new or already stored) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid event */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such track */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The event id is already used by another event */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listHistory: {
+        parameters: {
+            query?: {
+                /** @description How many to return (default 50, at most 200) */
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent plays */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Play"][];
+                };
+            };
+        };
+    };
+    listMostPlayed: {
+        parameters: {
+            query?: {
+                /** @description How many to return (default 50, at most 200) */
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Most played */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MostPlayed"][];
+                };
             };
         };
     };

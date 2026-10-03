@@ -482,6 +482,72 @@ paths:
                 $ref: "#/components/schemas/Problem"
         "416":
           description: The range starts beyond the end of the file
+  /api/v1/events/playback:
+    post:
+      operationId: recordPlaybackEvent
+      summary: Report a playback event
+      description: >
+        Idempotent by event id: sending the same event again answers 202 and
+        stores nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaybackEventRequest"
+      responses:
+        "202":
+          description: Accepted (new or already stored)
+        "400":
+          description: Invalid event
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: No such track
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: The event id is already used by another event
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/history:
+    get:
+      operationId: listHistory
+      summary: Your recent plays, newest first
+      description: One entry per qualifying play, so a track played twice appears twice.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Recent plays
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Play"
+  /api/v1/history/most-played:
+    get:
+      operationId: listMostPlayed
+      summary: Your most played tracks
+      description: Counts your qualifying plays per track, highest first.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Most played
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MostPlayed"
   /api/v1/albums/{id}/cover:
     get:
       operationId: getAlbumCover
@@ -509,6 +575,14 @@ paths:
                 $ref: "#/components/schemas/Problem"
 components:
   parameters:
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: How many to return (default 50, at most 200)
+      schema:
+        type: integer
+        default: 50
     UploadId:
       name: id
       in: path
@@ -670,6 +744,57 @@ components:
         createdAt:
           type: string
           format: date-time
+    PlaybackEventRequest:
+      description: >
+        A playback event as the player reports it. The server adds the user
+        from the session and stores the whole envelope unchanged. play_completed
+        is the qualifying play: sent once, at 30 seconds or half the track,
+        whichever comes first.
+      type: object
+      required: [eventId, schemaVersion, trackId, type, occurredAt, positionMs, clientId]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Chosen by the client. Sending the same id again is harmless.
+        schemaVersion:
+          type: integer
+          description: Envelope version. Currently 1.
+        trackId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [play_started, play_completed, skipped]
+        occurredAt:
+          type: string
+          format: date-time
+          description: When it happened on the client
+        positionMs:
+          type: integer
+          format: int64
+          description: Playback position in milliseconds when it happened
+        clientId:
+          type: string
+          description: Identifies the app instance, for example a per-browser random id
+    Play:
+      type: object
+      required: [track, playedAt]
+      properties:
+        track:
+          $ref: "#/components/schemas/Track"
+        playedAt:
+          type: string
+          format: date-time
+    MostPlayed:
+      type: object
+      required: [track, plays]
+      properties:
+        track:
+          $ref: "#/components/schemas/Track"
+        plays:
+          type: integer
+          format: int64
     UserSummary:
       type: object
       required: [id, username, role, status, createdAt]

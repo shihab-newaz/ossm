@@ -21,6 +21,8 @@ export type PlayerState = {
   duration: number;
   volume: number;
   muted: boolean;
+  /** Counts fresh starts of a track (a new one, a restart after reload, a repeat-one loop), so a listen can be told from the next. */
+  listen: number;
 };
 
 /** The part of HTMLAudioElement the player uses, so tests can drive it without a browser. */
@@ -146,6 +148,7 @@ export function createPlayer(options: Options = {}) {
     duration: saved ? saved.queue[saved.index].track.durationMs / 1000 : 0,
     volume: savedVolume(storage),
     muted: false,
+    listen: 0,
   };
 
   const elements: AudioLike[] = [];
@@ -294,7 +297,7 @@ export function createPlayer(options: Options = {}) {
     }
     if (startAt > 0 || ready) a.currentTime = startAt;
     loadedQid = item.qid;
-    set({ status: autoplay ? "loading" : "paused", currentTime: startAt, duration: item.track.durationMs / 1000 });
+    set({ listen: state.listen + 1, status: autoplay ? "loading" : "paused", currentTime: startAt, duration: item.track.durationMs / 1000 });
     if (autoplay) await start(a);
   }
 
@@ -330,7 +333,7 @@ export function createPlayer(options: Options = {}) {
   async function ended(a: AudioLike) {
     if (state.repeat === "one") {
       a.currentTime = 0;
-      set({ currentTime: 0 });
+      set({ listen: state.listen + 1, status: "loading", currentTime: 0 });
       await start(a);
       return;
     }
@@ -548,7 +551,7 @@ export type Player = ReturnType<typeof createPlayer>;
 export const player = createPlayer();
 
 // The server (and the hydration pass) always sees an idle player; a restored queue appears right after.
-const IDLE: PlayerState = { track: null, queue: [], index: -1, shuffle: false, repeat: "off", status: "idle", currentTime: 0, duration: 0, volume: 1, muted: false };
+const IDLE: PlayerState = { track: null, queue: [], index: -1, shuffle: false, repeat: "off", status: "idle", currentTime: 0, duration: 0, volume: 1, muted: false, listen: 0 };
 
 export function usePlayer(): PlayerState {
   return useSyncExternalStore(player.subscribe, player.getState, () => IDLE);

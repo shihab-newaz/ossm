@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -56,36 +58,42 @@ class LibraryController {
     this.bucket = bucket;
   }
 
+  /** Columns {@link #track} reads, from track t joined to artist a and (left) album al. */
+  static final String TRACK_COLUMNS =
+      "t.id, t.title, a.name as artist, al.title as album, t.album_id, al.cover_key,"
+          + " al.dominant_color, t.license, t.track_number, t.year, t.genre, t.duration_ms,"
+          + " t.codec, t.bitrate_kbps, t.created_at";
+
+  static final String TRACK_JOINS =
+      " from track t join artist a on a.id = t.artist_id left join album al on al.id = t.album_id";
+
+  static Track track(ResultSet rs) throws SQLException {
+    var albumId = rs.getObject("album_id", UUID.class);
+    var hasCover = rs.getString("cover_key") != null;
+    return new Track(
+        rs.getObject("id", UUID.class),
+        rs.getString("title"),
+        rs.getString("artist"),
+        rs.getString("album"),
+        albumId,
+        hasCover ? "/api/v1/albums/" + albumId + "/cover" : null,
+        rs.getString("dominant_color"),
+        rs.getString("license"),
+        (Integer) rs.getObject("track_number"),
+        (Integer) rs.getObject("year"),
+        rs.getString("genre"),
+        rs.getLong("duration_ms"),
+        rs.getString("codec"),
+        (Integer) rs.getObject("bitrate_kbps"),
+        rs.getObject("created_at", OffsetDateTime.class).toInstant());
+  }
+
   @Operation(operationId = "listTracks")
   @GetMapping("/tracks")
   List<Track> tracks() {
     return jdbc.sql(
-            "select t.id, t.title, a.name as artist, al.title as album, t.album_id, al.cover_key,"
-                + " al.dominant_color, t.license,"
-                + " t.track_number, t.year, t.genre, t.duration_ms, t.codec, t.bitrate_kbps,"
-                + " t.created_at from track t join artist a on a.id = t.artist_id"
-                + " left join album al on al.id = t.album_id order by t.created_at desc, t.title")
-        .query(
-            (rs, i) -> {
-              var albumId = rs.getObject("album_id", UUID.class);
-              var hasCover = rs.getString("cover_key") != null;
-              return new Track(
-                  rs.getObject("id", UUID.class),
-                  rs.getString("title"),
-                  rs.getString("artist"),
-                  rs.getString("album"),
-                  albumId,
-                  hasCover ? "/api/v1/albums/" + albumId + "/cover" : null,
-                  rs.getString("dominant_color"),
-                  rs.getString("license"),
-                  (Integer) rs.getObject("track_number"),
-                  (Integer) rs.getObject("year"),
-                  rs.getString("genre"),
-                  rs.getLong("duration_ms"),
-                  rs.getString("codec"),
-                  (Integer) rs.getObject("bitrate_kbps"),
-                  rs.getObject("created_at", OffsetDateTime.class).toInstant());
-            })
+            "select " + TRACK_COLUMNS + TRACK_JOINS + " order by t.created_at desc, t.title")
+        .query((rs, i) -> track(rs))
         .list();
   }
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PlaybackEvents } from "@/events/PlaybackEvents";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { Shortcuts } from "@/player/Shortcuts";
 import { PlayerBar } from "./PlayerBar";
@@ -21,6 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <TabBar />
       <ToastHost />
       <Shortcuts />
+      <PlaybackEvents />
     </div>
   );
 }
