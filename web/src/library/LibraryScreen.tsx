@@ -1,10 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Music, Pause, Play } from "lucide-react";
+import { ListEnd, ListPlus, Music, Pause, Play, Shuffle } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
+import { toast } from "@/components/ui/toast";
 import { player, usePlayer } from "@/player/player";
 
 type Track = components["schemas"]["Track"];
@@ -38,24 +39,43 @@ export function LibraryScreen() {
       ) : null}
       {tracks.data && tracks.data.length === 0 ? <Empty /> : null}
       {tracks.data && tracks.data.length > 0 ? (
-        <ul aria-label="Tracks" className="flex flex-col">
-          {tracks.data.map((track) => (
-            <TrackRow key={track.id} track={track} />
-          ))}
-        </ul>
+        <>
+          <div className="flex gap-2">
+            <button
+              onClick={() => void player.playList(tracks.data, 0)}
+              className="flex h-11 items-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.97]"
+            >
+              <Play size={18} aria-hidden fill="currentColor" />
+              Play all
+            </button>
+            <button
+              onClick={() => void player.playList(tracks.data, 0, { shuffle: true, randomStart: true })}
+              className="flex h-11 items-center gap-2 rounded-full border border-border-strong px-5 text-[15px] font-semibold hover:bg-surface-hover"
+            >
+              <Shuffle size={18} aria-hidden />
+              Shuffle all
+            </button>
+          </div>
+          <ul aria-label="Tracks" className="flex flex-col">
+            {tracks.data.map((track, i) => (
+              <TrackRow key={track.id} track={track} onPlay={() => void player.playList(tracks.data, i)} />
+            ))}
+          </ul>
+        </>
       ) : null}
     </div>
   );
 }
 
-function TrackRow({ track }: { track: Track }) {
+function TrackRow({ track, onPlay }: { track: Track; onPlay: () => void }) {
   const { track: current, status } = usePlayer();
   const isCurrent = current?.id === track.id;
   const playing = isCurrent && (status === "playing" || status === "loading");
   return (
     <li className="group flex items-center gap-4 rounded-card px-2 py-2 hover:bg-surface-hover">
       <button
-        onClick={() => (playing ? player.pause() : void player.play(track))}
+        // The row starts the whole list from here; on the track that is already loaded it just pauses or resumes.
+        onClick={() => (isCurrent ? void player.toggle() : onPlay())}
         aria-label={`${playing ? "Pause" : "Play"} ${track.title}`}
         className="relative size-10 shrink-0 overflow-hidden rounded-lg"
       >
@@ -80,6 +100,28 @@ function TrackRow({ track }: { track: Track }) {
           {track.artist}
           {track.album ? ` · ${track.album}` : ""}
         </p>
+      </div>
+      <div className="flex shrink-0 items-center md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+        <button
+          onClick={() => {
+            void player.playNext(track);
+            toast.info(`“${track.title}” will play next`);
+          }}
+          aria-label={`Play ${track.title} next`}
+          className="grid size-9 place-items-center rounded-full text-fg-muted hover:bg-surface-active"
+        >
+          <ListPlus size={18} aria-hidden />
+        </button>
+        <button
+          onClick={() => {
+            void player.enqueue(track);
+            toast.info(`Added “${track.title}” to the queue`);
+          }}
+          aria-label={`Add ${track.title} to queue`}
+          className="grid size-9 place-items-center rounded-full text-fg-muted hover:bg-surface-active"
+        >
+          <ListEnd size={18} aria-hidden />
+        </button>
       </div>
       <span className="font-mono text-[12px] text-fg-muted">{formatDuration(track.durationMs)}</span>
     </li>

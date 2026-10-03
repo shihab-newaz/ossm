@@ -22,3 +22,6 @@ Per-user memory of what the user likes and what they listened to.
 - [ ] The L keyboard shortcut likes the current track.
 - [ ] Empty Liked and History pages have guiding empty states.
 - [ ] UI and API tests cover like/unlike, optimistic update with rollback on failure, and history ordering.
+
+## Comments
+- From 08: the "L" (like) keyboard shortcut is not wired yet. Add it to `web/src/player/keymap.ts` (`handleShortcut` and the `SHORTCUTS` list that the help dialog renders) and cover it in `queueUi.test.tsx`.

@@ -1,21 +1,32 @@
 "use client";
 
-import { ListMusic, Music, Pause, Play, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
-import { useEffect } from "react";
+import { ListMusic, Music, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
+import { useEffect, useState } from "react";
+import { attachMediaSession } from "@/player/mediaSession";
 import { formatTime } from "@/player/format";
-import { player, usePlayer } from "@/player/player";
+import { player, usePlayer, type Repeat as RepeatMode } from "@/player/player";
+import { QueueDrawer } from "@/player/QueueDrawer";
 import { Slider } from "@/player/Slider";
 
-/** The persistent player (DESIGN.md 4.8). Queue, previous and next arrive with the queue slice. */
-export function PlayerBar() {
-  const { track, status, currentTime, duration, volume, muted } = usePlayer();
+const NEXT_REPEAT: Record<RepeatMode, RepeatMode> = { off: "all", all: "one", one: "off" };
+const REPEAT_LABEL: Record<RepeatMode, string> = { off: "Repeat: off", all: "Repeat: all", one: "Repeat: one" };
 
-  // Leaving the app shell (logout, session expiry) must not leave music playing behind the login page.
-  useEffect(() => () => player.stop(), []);
+const small = "grid size-11 place-items-center rounded-full hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40";
+
+/** The persistent player (DESIGN.md 4.8). */
+export function PlayerBar() {
+  const { track, status, currentTime, duration, volume, muted, shuffle, repeat, queue, index } = usePlayer();
+  const [queueOpen, setQueueOpen] = useState(false);
+
+  // Lock screen and media keys follow the player for as long as the app shell is on screen.
+  useEffect(() => attachMediaSession(player), []);
 
   const playing = status === "playing" || status === "loading";
   const percent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
   const VolumeIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+  const RepeatIcon = repeat === "one" ? Repeat1 : Repeat;
+  // At the end of the queue with repeat off there is nothing after this track.
+  const hasNext = repeat === "all" ? queue.length > 0 : index + 1 < queue.length;
 
   return (
     <section
@@ -49,8 +60,16 @@ export function PlayerBar() {
       </div>
 
       <div className="flex flex-col items-center gap-1">
-        <div className="flex items-center gap-2">
-          <button aria-label="Previous" disabled className="hidden size-11 cursor-not-allowed place-items-center rounded-full text-fg-muted opacity-40 sm:grid">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button
+            aria-label="Shuffle"
+            aria-pressed={shuffle}
+            onClick={() => player.setShuffle(!shuffle)}
+            className={`${small} hidden sm:grid ${shuffle ? "text-accent" : "text-fg-muted"}`}
+          >
+            <Shuffle size={20} aria-hidden />
+          </button>
+          <button aria-label="Previous" disabled={!track} onClick={() => void player.previous()} className={`${small} hidden text-fg sm:grid`}>
             <SkipBack size={20} aria-hidden />
           </button>
           <button
@@ -62,8 +81,16 @@ export function PlayerBar() {
           >
             {playing ? <Pause size={20} aria-hidden fill="currentColor" /> : <Play size={20} aria-hidden fill="currentColor" />}
           </button>
-          <button aria-label="Next" disabled className="hidden size-11 cursor-not-allowed place-items-center rounded-full text-fg-muted opacity-40 sm:grid">
+          <button aria-label="Next" disabled={!track || !hasNext} onClick={() => void player.next()} className={`${small} text-fg`}>
             <SkipForward size={20} aria-hidden />
+          </button>
+          <button
+            aria-label={REPEAT_LABEL[repeat]}
+            aria-pressed={repeat !== "off"}
+            onClick={() => player.setRepeat(NEXT_REPEAT[repeat])}
+            className={`${small} hidden sm:grid ${repeat !== "off" ? "text-accent" : "text-fg-muted"}`}
+          >
+            <RepeatIcon size={20} aria-hidden />
           </button>
         </div>
         <div className="hidden w-full max-w-[560px] items-center gap-3 lg:flex">
@@ -84,16 +111,18 @@ export function PlayerBar() {
       </div>
 
       <div className="hidden items-center justify-end gap-2 lg:flex">
-        <button aria-label="Queue" disabled className="grid size-11 cursor-not-allowed place-items-center rounded-full text-fg-muted opacity-40">
+        <button
+          aria-label="Queue"
+          aria-expanded={queueOpen}
+          aria-haspopup="dialog"
+          onClick={() => setQueueOpen(true)}
+          className={`${small} text-fg-muted`}
+        >
           <ListMusic size={20} aria-hidden />
         </button>
         {track ? (
           <>
-            <button
-              aria-label={muted ? "Unmute" : "Mute"}
-              onClick={() => player.setMuted(!muted)}
-              className="grid size-11 place-items-center rounded-full text-fg-muted hover:bg-surface-hover"
-            >
+            <button aria-label={muted ? "Unmute" : "Mute"} onClick={() => player.setMuted(!muted)} className={`${small} text-fg-muted`}>
               <VolumeIcon size={20} aria-hidden />
             </button>
             <Slider
@@ -108,6 +137,7 @@ export function PlayerBar() {
           </>
         ) : null}
       </div>
+      <QueueDrawer open={queueOpen} onClose={() => setQueueOpen(false)} />
     </section>
   );
 }

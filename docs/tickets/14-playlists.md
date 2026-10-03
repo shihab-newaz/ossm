@@ -23,3 +23,6 @@ Users organize music into playlists, privately by default and optionally shared 
 - [ ] Deleting a track from the library removes it from playlists without breaking them.
 - [ ] Playlists appear in the sidebar with thumbnails and update without a reload.
 - [ ] UI tests cover create, add, reorder (pointer and keyboard), and the visibility toggle against the MSW mock.
+
+## Comments
+- From 08: playlist "play" and "shuffle" should use `player.playList(tracks, start, { shuffle, randomStart })`; "add to queue" uses `player.enqueue`.

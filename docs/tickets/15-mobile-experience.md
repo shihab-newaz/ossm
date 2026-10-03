@@ -22,3 +22,6 @@ The app is comfortable to use on a phone, following DESIGN.md Section 8.
 - [ ] Content never hides behind the mini-player or tab bar.
 - [ ] Every screen implemented so far has been checked at mobile, tablet and desktop widths, in light and dark.
 - [ ] UI tests cover mini-player expansion and dismissal.
+
+## Comments
+- From 08: the queue button and shuffle/repeat are hidden below the lg breakpoint, and there is no full-screen player yet. This ticket should add the mini-player expansion and a way to reach the queue on mobile.

@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { Providers } from "@/components/Providers";
+import { player } from "@/player/player";
 import { AccountMenu } from "@/components/shell/AccountMenu";
 import { admin, problem } from "@/test/handlers";
 import { location, resetNavigation, router } from "@/test/navigation";
@@ -166,6 +167,37 @@ describe("the auth gate", () => {
     server.use(http.get("*/api/v1/health", () => problem(401, "Unauthorized", "You are not logged in.")));
 
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/login?next=%2Fplaylists"));
+  });
+});
+
+describe("playback and signing out", () => {
+  it("leaves the music alone while signed in, and stops it and empties the queue once the session is gone", async () => {
+    signedIn();
+    const stop = vi.spyOn(player, "stop").mockImplementation(() => {});
+    function Page() {
+      const { data } = useQuery({
+        queryKey: ["library"],
+        queryFn: async () => (await api.GET("/api/v1/health")).data ?? null,
+        refetchInterval: 50,
+      });
+      return <p>{data ? "library loaded" : "waiting"}</p>;
+    }
+    render(<Providers><AuthGate><Page /></AuthGate></Providers>);
+    expect(await screen.findByText("library loaded")).toBeInTheDocument();
+    expect(stop).not.toHaveBeenCalled();
+
+    server.use(http.get("*/api/v1/health", () => problem(401, "Unauthorized", "You are not logged in.")));
+
+    await waitFor(() => expect(stop).toHaveBeenCalled());
+    stop.mockRestore();
+  });
+
+  it("stops it for a visitor who was never signed in, so a stale queue is not kept", async () => {
+    const stop = vi.spyOn(player, "stop").mockImplementation(() => {});
+    render(<Providers><AuthGate><p>secret library</p></AuthGate></Providers>);
+
+    await waitFor(() => expect(stop).toHaveBeenCalled());
+    stop.mockRestore();
   });
 });
 

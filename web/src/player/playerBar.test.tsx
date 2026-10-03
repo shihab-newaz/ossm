@@ -163,15 +163,6 @@ describe("the player bar", () => {
     expect(player.getState().muted).toBe(true);
     expect(screen.getByRole("button", { name: "Unmute" })).toBeInTheDocument();
   });
-
-  it("stops the music when the app shell goes away, such as on logout", async () => {
-    await act(() => player.play(track("t1", "Midnight City")));
-    const view = render(<PlayerBar />);
-
-    view.unmount();
-
-    expect(player.getState().status).toBe("idle");
-  });
 });
 
 describe("when streaming fails", () => {

@@ -1,44 +1,28 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { createPlayer, type AudioLike } from "./player";
+import { FakeAudio } from "@/test/fakeAudio";
+import { createPlayer } from "./player";
 
 const track = { id: "t1", title: "Midnight City", artist: "M83", album: "Hurry Up", coverUrl: "/api/v1/albums/a1/cover", durationMs: 243_000 };
 const other = { ...track, id: "t2", title: "Wait" };
 
-/** jsdom cannot play media, so this stands in for the element and lets a test fire the events a browser would. */
-class FakeAudio extends EventTarget implements AudioLike {
-  src = "";
-  currentTime = 0;
-  duration = NaN;
-  volume = 1;
-  muted = false;
-  paused = true;
-  error: { code: number } | null = null;
-  playRejection: Error | null = null;
-
-  play = vi.fn(async () => {
-    if (this.playRejection) throw this.playRejection;
-    this.paused = false;
-    this.fire("playing");
-  });
-  pause = vi.fn(() => {
-    this.paused = true;
-    this.fire("pause");
-  });
-  load = vi.fn();
-  removeAttribute = vi.fn((name: string) => {
-    if (name === "src") this.src = "";
-  });
-  fire(type: string) {
-    this.dispatchEvent(new Event(type));
-  }
-}
-
 let audio: FakeAudio;
+/** Every element the player asked for: the first plays, the second preloads the next track. */
+let elements: FakeAudio[];
 let notify: Mock<(message: string) => void>;
-const make = () => createPlayer({ audio: () => audio, notify, storage: null });
+const make = () =>
+  createPlayer({
+    audio: () => {
+      const el = elements.length === 0 ? audio : new FakeAudio();
+      elements.push(el);
+      return el;
+    },
+    notify,
+    storage: null,
+  });
 
 beforeEach(() => {
   audio = new FakeAudio();
+  elements = [];
   notify = vi.fn();
 });
 
