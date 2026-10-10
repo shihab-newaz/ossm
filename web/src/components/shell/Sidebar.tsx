@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertTriangle, Users } from "lucide-react";
+import { AlertTriangle, Heart, History, Users } from "lucide-react";
 import { useMe } from "@/auth/session";
 import { isActive, navItems } from "./nav";
 
@@ -59,7 +59,24 @@ export function Sidebar() {
       ) : null}
       <div className="flex-1">
         <h2 className="px-3 pb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-fg-subtle">Your library</h2>
-        <p className="px-3 text-[13px] text-fg-subtle">Playlists will show up here.</p>
+        <ul className="flex flex-col gap-1">
+          {[
+            { href: "/liked", label: "Liked", Icon: Heart },
+            { href: "/history", label: "History", Icon: History },
+          ].map(({ href, label, Icon }) => (
+            <li key={href}>
+              <Link
+                href={href}
+                aria-current={isActive(pathname, href) ? "page" : undefined}
+                className="group flex h-10 items-center gap-3 rounded-card px-3 text-[15px] font-medium text-fg-muted hover:bg-surface-hover aria-[current=page]:bg-surface-active aria-[current=page]:text-fg"
+              >
+                <Icon size={20} aria-hidden className="group-aria-[current=page]:text-accent" />
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <p className="px-3 pt-3 text-[13px] text-fg-subtle">Playlists will show up here.</p>
       </div>
     </aside>
   );

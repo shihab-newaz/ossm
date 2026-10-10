@@ -3,16 +3,22 @@ package dev.ossm.api.library;
 import dev.ossm.api.auth.CurrentUser;
 import dev.ossm.api.library.LibraryController.Track;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * What the signed-in user listened to, derived from their qualifying plays (play_completed).
@@ -44,27 +50,48 @@ class HistoryController {
   @Operation(
       operationId = "listHistory",
       summary = "Your recent plays, newest first",
-      description = "One entry per qualifying play, so a track played twice appears twice.")
+      description =
+          "One entry per qualifying play, so a track played twice appears twice. Page through it"
+              + " with limit and offset; the total is in X-Total-Count.")
+  @ApiResponses(
+      @ApiResponse(
+          responseCode = "200",
+          description = "Recent plays",
+          headers = @Header(name = "X-Total-Count", schema = @Schema(type = "integer"))))
   @GetMapping("/history")
-  List<Play> history(
-      @RequestParam(defaultValue = "" + DEFAULT_LIMIT) int limit, Authentication authentication) {
+  ResponseEntity<List<Play>> history(
+      @RequestParam(defaultValue = "" + DEFAULT_LIMIT) int limit,
+      @RequestParam(defaultValue = "0") int offset,
+      Authentication authentication) {
+    if (offset < 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "offset cannot be negative.");
+    }
     var userId = currentUser.id(authentication);
-    return jdbc.sql(
+    var total =
+        jdbc.sql(
+                "select count(*) from play_event where user_id = :user and type = 'play_completed'")
+            .param("user", userId)
+            .query(Long.class)
+            .single();
+    var plays =
+        jdbc.sql(
             "select "
                 + LibraryController.TRACK_COLUMNS
                 + ", e.occurred_at as played_at"
                 + LibraryController.TRACK_JOINS
                 + " join play_event e on e.track_id = t.id"
                 + " where e.user_id = :user and e.type = 'play_completed'"
-                + " order by e.occurred_at desc, e.seq desc limit :limit")
-        .param("user", userId)
-        .param("limit", clamp(limit))
-        .query(
-            (rs, i) ->
-                new Play(
-                    LibraryController.track(rs),
-                    rs.getObject("played_at", OffsetDateTime.class).toInstant()))
-        .list();
+                + " order by e.occurred_at desc, e.seq desc limit :limit offset :offset")
+            .param("user", userId)
+            .param("limit", clamp(limit))
+            .param("offset", offset)
+            .query(
+                (rs, i) ->
+                    new Play(
+                        LibraryController.track(rs),
+                        rs.getObject("played_at", OffsetDateTime.class).toInstant()))
+            .list();
+    return ResponseEntity.ok().header("X-Total-Count", String.valueOf(total)).body(plays);
   }
 
   @Operation(

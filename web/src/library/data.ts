@@ -12,12 +12,12 @@ export const PAGE_SIZE = 200;
 type Page<T> = { items: T[]; total: number; offset: number };
 
 /** The total comes in a header. A server that does not send it is treated as having just this page. */
-function page<T>(items: T[], response: Response, offset: number): Page<T> {
+export function page<T>(items: T[], response: Response, offset: number): Page<T> {
   const total = Number(response.headers.get("X-Total-Count"));
   return { items, offset, total: Number.isFinite(total) && response.headers.has("X-Total-Count") ? total : offset + items.length };
 }
 
-function usePaged<T>(key: unknown[], load: (offset: number) => Promise<Page<T>>) {
+export function usePaged<T>(key: unknown[], load: (offset: number) => Promise<Page<T>>) {
   const query = useInfiniteQuery({
     queryKey: key,
     initialPageParam: 0,

@@ -10,6 +10,8 @@ Domain terms for OSSM. Filled in lazily as the language settles; add a term when
 
 **Genre slug**: a genre name lowercased, with runs of non-alphanumeric characters turned into one hyphen. "Hip-Hop", "hip hop" and "HIP/HOP" share the slug `hip-hop` and count as one genre.
 
+**Favorite** (UI: "liked"): a track a user has marked with the heart. Per user and never visible to others. The UI keeps the whole set of a user's favorite ids once and every heart reads it.
+
 **Top result**: the single best match of a search across tracks, albums and artists. An artist beats an album beats a track when scores tie.
 
 **Featured album**: the newest album that has a cover. Shown in the Explore banner.

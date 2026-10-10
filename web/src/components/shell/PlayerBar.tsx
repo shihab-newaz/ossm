@@ -2,6 +2,7 @@
 
 import { ListMusic, Music, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState } from "react";
+import { LikeButton } from "@/favorites/LikeButton";
 import { attachMediaSession } from "@/player/mediaSession";
 import { formatTime } from "@/player/format";
 import { player, usePlayer, type Repeat as RepeatMode } from "@/player/player";
@@ -53,6 +54,7 @@ export function PlayerBar() {
               <p className="truncate text-[14px] font-semibold">{track.title}</p>
               <p className="truncate text-[13px] text-fg-muted">{track.artist}</p>
             </div>
+            <LikeButton track={track} />
           </>
         ) : (
           <p className="text-[14px] text-fg-subtle">Nothing playing</p>

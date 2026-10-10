@@ -61,6 +61,15 @@ export function LibraryScreen() {
   return (
     <div className="flex flex-col gap-6 py-8">
       <h1 className="font-display text-[28px] font-extrabold leading-[34px] tracking-[-0.015em] md:text-4xl md:leading-[42px]">Library</h1>
+      {/* The sidebar has these on a wide screen; a phone has no sidebar, so they are here too. */}
+      <nav aria-label="Your music" className="flex gap-2 lg:hidden">
+        <Link href="/liked" className="h-9 rounded-full border border-border-strong px-4 text-[14px] font-semibold leading-9 hover:bg-surface-hover">
+          Liked
+        </Link>
+        <Link href="/history" className="h-9 rounded-full border border-border-strong px-4 text-[14px] font-semibold leading-9 hover:bg-surface-hover">
+          History
+        </Link>
+      </nav>
       <div role="tablist" aria-label="Library sections" className="flex gap-2">
         {TABS.map((t) => (
           <button
@@ -84,7 +93,7 @@ export function LibraryScreen() {
 }
 
 /** Asks for the next page when the rows on screen are close to the end of what has loaded. */
-function useLoadMore(loaded: number, query: { hasNextPage: boolean; isFetchingNextPage: boolean; fetchNextPage: () => unknown }) {
+export function useLoadMore(loaded: number, query: { hasNextPage: boolean; isFetchingNextPage: boolean; fetchNextPage: () => unknown }) {
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
   return useCallback(
     (last: number) => {

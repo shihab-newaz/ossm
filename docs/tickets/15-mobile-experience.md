@@ -1,7 +1,7 @@
 # 15: Mobile experience
 
 **Parent:** docs/specs/01-phase-1-core-app.md (UI details: docs/specs/02-phase-1-web-ui.md)
-**Status:** ready-for-agent
+**Status:** deferred (set aside on 2026-10-10 by the owner; nothing else depends on it, ticket 16 no longer waits for it)
 **Blocked by:** 08 (Queue and full player), 10 (Library browsing)
 
 ## What to build

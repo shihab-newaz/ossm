@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { useToggleLike } from "@/favorites/data";
 import { searchPalette } from "@/search/palette";
 import { player } from "./player";
 import { handleShortcut, SHORTCUTS } from "./keymap";
@@ -9,10 +10,17 @@ import { handleShortcut, SHORTCUTS } from "./keymap";
 /** Listens for the player's keyboard shortcuts, and shows the "?" help dialog. Renders nothing otherwise. */
 export function Shortcuts() {
   const [helpOpen, setHelpOpen] = useState(false);
+  const toggleLike = useToggleLike();
+  // The listener below is set up once; this keeps it calling the latest function.
+  const toggleLikeRef = useRef(toggleLike);
+  useEffect(() => {
+    toggleLikeRef.current = toggleLike;
+  });
 
   useEffect(() => {
     const ui = {
       showHelp: () => setHelpOpen((open) => !open),
+      toggleLike: (track: { id: string; title: string }) => toggleLikeRef.current(track),
       openSearch: () => {
         setHelpOpen(false);
         searchPalette.open();

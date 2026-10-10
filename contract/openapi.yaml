@@ -696,12 +696,18 @@ paths:
     get:
       operationId: listHistory
       summary: Your recent plays, newest first
-      description: One entry per qualifying play, so a track played twice appears twice.
+      description: >
+        One entry per qualifying play, so a track played twice appears twice.
+        Page through it with limit and offset; the total is in X-Total-Count.
       parameters:
         - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/PageOffset"
       responses:
         "200":
           description: Recent plays
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
           content:
             application/json:
               schema:
@@ -724,6 +730,70 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/MostPlayed"
+  /api/v1/favorites:
+    get:
+      operationId: listFavorites
+      summary: Your liked tracks, most recently liked first
+      description: >
+        Everything unless limit and offset are given. Only yours: nobody else's
+        likes are ever returned. The total is in X-Total-Count.
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/PageOffset"
+      responses:
+        "200":
+          description: Liked tracks
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Track"
+  /api/v1/favorites/ids:
+    get:
+      operationId: listFavoriteIds
+      summary: The ids of every track you have liked
+      description: >
+        Small and cheap, so a client can keep it and show the like state of any
+        track it has on screen.
+      responses:
+        "200":
+          description: Track ids
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+  /api/v1/favorites/{trackId}:
+    put:
+      operationId: likeTrack
+      summary: Like a track
+      description: Liking a track you already like changes nothing.
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "204":
+          description: Liked
+        "404":
+          description: No such track
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: unlikeTrack
+      summary: Unlike a track
+      description: Unliking a track you do not like changes nothing.
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "204":
+          description: No longer liked
   /api/v1/search:
     get:
       operationId: search
@@ -811,6 +881,13 @@ components:
       schema:
         type: integer
         default: 50
+    TrackId:
+      name: trackId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     UploadId:
       name: id
       in: path

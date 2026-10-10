@@ -309,13 +309,58 @@ describe("keyboard shortcuts", () => {
     expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
   });
 
+  it("L likes the current track, and unlikes it again", async () => {
+    const liked: string[] = [];
+    const calls: string[] = [];
+    server.use(
+      http.get("*/api/v1/favorites/ids", () => HttpResponse.json([...liked])),
+      http.put("*/api/v1/favorites/:id", ({ params }) => {
+        calls.push(`PUT ${params.id}`);
+        liked.push(params.id as string);
+        return new HttpResponse(null, { status: 204 });
+      }),
+      http.delete("*/api/v1/favorites/:id", ({ params }) => {
+        calls.push(`DELETE ${params.id}`);
+        liked.splice(liked.indexOf(params.id as string), 1);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = await playing();
+    const heart = (pressed: boolean) => within(bar()).findByRole("button", { name: "Like Song 2", pressed });
+    await heart(false);
+
+    await user.keyboard("l");
+    expect(await heart(true)).toBeInTheDocument();
+    await user.keyboard("L");
+    expect(await heart(false)).toBeInTheDocument();
+
+    await vi.waitFor(() => expect(calls).toEqual(["PUT t2", "DELETE t2"]));
+  });
+
+  it("L does nothing while typing, and when nothing is playing", async () => {
+    const calls: string[] = [];
+    server.use(http.put("*/api/v1/favorites/:id", ({ params }) => (calls.push(String(params.id)), new HttpResponse(null, { status: 204 }))));
+    const user = userEvent.setup();
+    renderApp();
+    await screen.findByRole("button", { name: "Play Song 2" });
+
+    await user.keyboard("l");
+    expect(calls).toEqual([]);
+    expect(player.getState().status).toBe("idle");
+
+    await user.click(await screen.findByRole("button", { name: "Play Song 2" }));
+    await user.click(screen.getByRole("searchbox", { name: "Search your library" }));
+    await user.keyboard("l");
+    expect(calls).toEqual([]);
+  });
+
   it("? opens a help dialog that lists every shortcut, and closes again", async () => {
     const user = await playing();
 
     await user.keyboard("?");
     const help = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
 
-    for (const action of ["Play or pause", "Seek back or forward 5 seconds", "Previous track", "Next track", "Mute or unmute", "Search", "Show this list"]) {
+    for (const action of ["Play or pause", "Seek back or forward 5 seconds", "Previous track", "Next track", "Mute or unmute", "Like or unlike the current track", "Search", "Show this list"]) {
       expect(within(help).getByText(action)).toBeInTheDocument();
     }
     await user.keyboard("{Escape}");

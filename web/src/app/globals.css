@@ -137,6 +137,16 @@ body {
   animation-delay: -600ms;
   animation-duration: 1050ms;
 }
+/* The like toggle's pop (DESIGN.md 4.4): 1 to 1.2 to 1 over 200ms. */
+@keyframes like-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
 @keyframes eq {
   0%,
   100% {
