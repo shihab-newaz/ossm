@@ -563,6 +563,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find tracks, albums and artists in the shared library
+         * @description Matches whole and partial words, and tolerates typos. Tracks match on their title, artist and album; albums on their title and artist; artists on their name. Each group is best match first, and holds at most limit items. top names the single best match across the groups (an artist beats an album, which beats a track, when scores tie) and is left out when nothing matches. A blank q returns empty groups.
+         */
+        get: operations["search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/albums/{id}/cover": {
         parameters: {
             query?: never;
@@ -752,6 +772,19 @@ export interface components {
             track: components["schemas"]["Track"];
             /** Format: int64 */
             plays: number;
+        };
+        SearchResults: {
+            top?: components["schemas"]["SearchTop"];
+            tracks: components["schemas"]["Track"][];
+            albums: components["schemas"]["Album"][];
+            artists: components["schemas"]["Artist"][];
+        };
+        /** @description The best match overall. Look it up by id in the group its type names. */
+        SearchTop: {
+            /** @enum {string} */
+            type: "track" | "album" | "artist";
+            /** Format: uuid */
+            id: string;
         };
         UserSummary: {
             /** Format: uuid */
@@ -1839,6 +1872,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MostPlayed"][];
+                };
+            };
+        };
+    };
+    search: {
+        parameters: {
+            query: {
+                /** @description What to look for */
+                q: string;
+                /** @description How many to return per group (default 8, at most 50) */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matches, grouped */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResults"];
                 };
             };
         };

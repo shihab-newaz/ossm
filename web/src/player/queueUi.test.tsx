@@ -7,9 +7,13 @@ import { PlayerBar } from "@/components/shell/PlayerBar";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { toast } from "@/components/ui/toast";
 import { LibraryScreen } from "@/library/LibraryScreen";
+import { SearchPalette } from "@/search/SearchPalette";
+import { searchPalette } from "@/search/palette";
 import { server } from "@/test/server";
 import { player } from "./player";
 import { Shortcuts } from "./Shortcuts";
+
+vi.mock("next/navigation", async () => (await import("@/test/navigation")).navigationMock);
 
 const track = (n: number) => ({
   id: `t${n}`,
@@ -42,6 +46,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   act(() => {
+    searchPalette.close();
     player.setShuffle(false);
     player.setRepeat("off");
     player.stop();
@@ -58,6 +63,7 @@ const renderApp = () =>
       <PlayerBar />
       <ToastHost />
       <Shortcuts />
+      <SearchPalette />
     </Providers>,
   );
 const bar = () => screen.getByRole("region", { name: "Player" });
@@ -290,12 +296,17 @@ describe("keyboard shortcuts", () => {
     expect(player.getState().muted).toBe(false);
   });
 
-  it("/ focuses the search box", async () => {
+  it("/ and Ctrl+K open the search palette, with its box focused", async () => {
     const user = await playing();
 
     await user.keyboard("/");
+    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Search your library" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Search" })).not.toBeInTheDocument();
 
-    expect(screen.getByRole("searchbox", { name: "Search your library" })).toHaveFocus();
+    await user.keyboard("{Control>}k{/Control}");
+    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
   });
 
   it("? opens a help dialog that lists every shortcut, and closes again", async () => {
@@ -319,6 +330,7 @@ describe("keyboard shortcuts", () => {
     await user.keyboard("m a/ ?");
 
     expect(search).toHaveValue("m a/ ?");
+    expect(screen.queryByRole("dialog", { name: "Search" })).not.toBeInTheDocument();
     expect(player.getState().muted).toBe(false);
     expect(player.getState().status).toBe("playing");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

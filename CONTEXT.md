@@ -10,4 +10,6 @@ Domain terms for OSSM. Filled in lazily as the language settles; add a term when
 
 **Genre slug**: a genre name lowercased, with runs of non-alphanumeric characters turned into one hyphen. "Hip-Hop", "hip hop" and "HIP/HOP" share the slug `hip-hop` and count as one genre.
 
+**Top result**: the single best match of a search across tracks, albums and artists. An artist beats an album beats a track when scores tie.
+
 **Featured album**: the newest album that has a cover. Shown in the Explore banner.

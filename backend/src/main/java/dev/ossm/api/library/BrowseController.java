@@ -174,7 +174,7 @@ class BrowseController {
     return new AlbumDetail(album, uploadedBy, uploadedAt, tracks);
   }
 
-  private static final String ARTIST_SELECT =
+  static final String ARTIST_SELECT =
       "select a.id, a.name,"
           + " (select count(*) from album al where al.artist_id = a.id) as album_count,"
           + " (select count(*) from track t where t.artist_id = a.id) as track_count,"
@@ -182,7 +182,7 @@ class BrowseController {
           + " order by al.year desc nulls last, lower(al.title), al.id limit 1) as cover_album"
           + " from artist a";
 
-  private static Artist artist(ResultSet rs) throws SQLException {
+  static Artist artist(ResultSet rs) throws SQLException {
     var coverAlbum = rs.getObject("cover_album", UUID.class);
     return new Artist(
         rs.getObject("id", UUID.class),

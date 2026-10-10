@@ -10,6 +10,7 @@ export const SHORTCUTS: { keys: string[]; action: string }[] = [
   { keys: ["Shift", "→"], action: "Next track" },
   { keys: ["M"], action: "Mute or unmute" },
   { keys: ["/"], action: "Search" },
+  { keys: ["Ctrl", "K"], action: "Search, even while typing (⌘K on a Mac)" },
   { keys: ["?"], action: "Show this list" },
 ];
 
@@ -26,10 +27,15 @@ function activatesOnSpace(target: EventTarget | null): boolean {
   return !!el?.closest?.('button, a[href], summary, [role="button"], [role="menuitem"], [role="switch"], [role="checkbox"]');
 }
 
-export type ShortcutUi = { showHelp: () => void; focusSearch: () => void };
+export type ShortcutUi = { showHelp: () => void; openSearch: () => void };
 
 /** Runs a keyboard shortcut if the key is one. Returns true when it did, so the caller can stop the browser's own action. */
 export function handleShortcut(event: KeyboardEvent, player: Player, ui: ShortcutUi): boolean {
+  // Ctrl/Cmd+K is the one shortcut that works from inside a field, as it does in most apps.
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
+    ui.openSearch();
+    return true;
+  }
   if (event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target)) return false;
   const { track } = player.getState();
 
@@ -51,7 +57,7 @@ export function handleShortcut(event: KeyboardEvent, player: Player, ui: Shortcu
       player.setMuted(!player.getState().muted);
       return true;
     case "/":
-      ui.focusSearch();
+      ui.openSearch();
       return true;
     case "?":
       ui.showHelp();

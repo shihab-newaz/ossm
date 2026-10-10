@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { searchPalette } from "@/search/palette";
 import { player } from "./player";
 import { handleShortcut, SHORTCUTS } from "./keymap";
 
@@ -12,12 +13,17 @@ export function Shortcuts() {
   useEffect(() => {
     const ui = {
       showHelp: () => setHelpOpen((open) => !open),
-      focusSearch: () => document.querySelector<HTMLInputElement>('input[type="search"]')?.focus(),
+      openSearch: () => {
+        setHelpOpen(false);
+        searchPalette.open();
+      },
     };
     function onKeyDown(event: KeyboardEvent) {
-      // Inside a dialog the keys belong to the dialog, except "?" which closes the help again.
+      // Inside a dialog the keys belong to the dialog, except "?" which closes the help again and
+      // Ctrl/Cmd+K, which opens search from anywhere (and is harmless once it is already open).
       const inDialog = (event.target as HTMLElement | null)?.closest?.('[role="dialog"]');
-      if (inDialog && event.key !== "?") return;
+      const opensSearch = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
+      if (inDialog && event.key !== "?" && !opensSearch) return;
       if (handleShortcut(event, player, ui)) event.preventDefault();
     }
     document.addEventListener("keydown", onKeyDown);

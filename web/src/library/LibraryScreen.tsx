@@ -282,7 +282,7 @@ function ArtistsTab() {
   );
 }
 
-function ArtistRow({ artist }: { artist: Artist }) {
+export function ArtistRow({ artist }: { artist: Artist }) {
   const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   return (
     <Link href={`/artists/${artist.id}`} className="flex h-[72px] items-center gap-4 rounded-card px-2 hover:bg-surface-hover">
