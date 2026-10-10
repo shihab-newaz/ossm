@@ -72,8 +72,7 @@ class SearchApiTest {
   }
 
   private JsonNode search(String q) throws Exception {
-    var response =
-        session.get("/api/v1/search?q=" + URLEncoder.encode(q, StandardCharsets.UTF_8));
+    var response = session.get("/api/v1/search?q=" + URLEncoder.encode(q, StandardCharsets.UTF_8));
     assertThat(response.statusCode()).isEqualTo(200);
     return JSON.readTree(response.body());
   }

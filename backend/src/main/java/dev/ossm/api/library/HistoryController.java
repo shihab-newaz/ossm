@@ -75,13 +75,13 @@ class HistoryController {
             .single();
     var plays =
         jdbc.sql(
-            "select "
-                + LibraryController.TRACK_COLUMNS
-                + ", e.occurred_at as played_at"
-                + LibraryController.TRACK_JOINS
-                + " join play_event e on e.track_id = t.id"
-                + " where e.user_id = :user and e.type = 'play_completed'"
-                + " order by e.occurred_at desc, e.seq desc limit :limit offset :offset")
+                "select "
+                    + LibraryController.TRACK_COLUMNS
+                    + ", e.occurred_at as played_at"
+                    + LibraryController.TRACK_JOINS
+                    + " join play_event e on e.track_id = t.id"
+                    + " where e.user_id = :user and e.type = 'play_completed'"
+                    + " order by e.occurred_at desc, e.seq desc limit :limit offset :offset")
             .param("user", userId)
             .param("limit", clamp(limit))
             .param("offset", offset)

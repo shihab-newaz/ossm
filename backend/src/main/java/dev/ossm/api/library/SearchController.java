@@ -48,9 +48,9 @@ class SearchController {
   private static final Pattern NOT_WORD = Pattern.compile("[^\\p{L}\\p{N}]+");
 
   /**
-   * Typos cost far more trigram similarity than Postgres' default of 0.5 allows ("glroy" for "glory"
-   * scores about 0.4, "rodas" for "roads" 0.2). Loosened for the search transaction only; ranking
-   * keeps the best matches on top. Strict means a match must line up with whole words, so
+   * Typos cost far more trigram similarity than Postgres' default of 0.5 allows ("glroy" for
+   * "glory" scores about 0.4, "rodas" for "roads" 0.2). Loosened for the search transaction only;
+   * ranking keeps the best matches on top. Strict means a match must line up with whole words, so
    * "radiohead" does not find "Portishead" through the shared "head".
    */
   private static final double TRIGRAM_THRESHOLD = 0.2;
@@ -151,8 +151,9 @@ class SearchController {
   }
 
   /**
-   * The words of the query as a prefix tsquery ("glory bo" becomes {@code glory:* & bo:*}), or empty
-   * when there are no words. Only letters and digits survive, so it is always valid tsquery syntax.
+   * The words of the query as a prefix tsquery ("glory bo" becomes {@code glory:* & bo:*}), or
+   * empty when there are no words. Only letters and digits survive, so it is always valid tsquery
+   * syntax.
    */
   private static String prefixQuery(String q) {
     var words = NOT_WORD.split(q.toLowerCase(Locale.ROOT));
