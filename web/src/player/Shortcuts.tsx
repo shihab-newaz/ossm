@@ -1,23 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { useToggleLike } from "@/favorites/data";
+import { searchPalette } from "@/search/palette";
 import { player } from "./player";
 import { handleShortcut, SHORTCUTS } from "./keymap";
 
 /** Listens for the player's keyboard shortcuts, and shows the "?" help dialog. Renders nothing otherwise. */
 export function Shortcuts() {
   const [helpOpen, setHelpOpen] = useState(false);
+  const toggleLike = useToggleLike();
+  // The listener below is set up once; this keeps it calling the latest function.
+  const toggleLikeRef = useRef(toggleLike);
+  useEffect(() => {
+    toggleLikeRef.current = toggleLike;
+  });
 
   useEffect(() => {
     const ui = {
       showHelp: () => setHelpOpen((open) => !open),
-      focusSearch: () => document.querySelector<HTMLInputElement>('input[type="search"]')?.focus(),
+      toggleLike: (track: { id: string; title: string }) => toggleLikeRef.current(track),
+      openSearch: () => {
+        setHelpOpen(false);
+        searchPalette.open();
+      },
     };
     function onKeyDown(event: KeyboardEvent) {
-      // Inside a dialog the keys belong to the dialog, except "?" which closes the help again.
+      // Inside a dialog the keys belong to the dialog, except "?" which closes the help again and
+      // Ctrl/Cmd+K, which opens search from anywhere (and is harmless once it is already open).
       const inDialog = (event.target as HTMLElement | null)?.closest?.('[role="dialog"]');
-      if (inDialog && event.key !== "?") return;
+      const opensSearch = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
+      if (inDialog && event.key !== "?" && !opensSearch) return;
       if (handleShortcut(event, player, ui)) event.preventDefault();
     }
     document.addEventListener("keydown", onKeyDown);

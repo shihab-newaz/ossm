@@ -3,6 +3,7 @@
 import { Search, Upload } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { searchPalette } from "@/search/palette";
 import { AccountMenu } from "./AccountMenu";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
@@ -22,15 +23,19 @@ export function TopBar() {
         scrolled ? "bg-bg/85 backdrop-blur-[12px]" : "bg-bg"
       }`}
     >
-      <form role="search" className="relative w-full max-w-[480px]">
+      {/* The pill opens the search palette; the typing happens there, so Ctrl+K, "/" and a click all land in one place. */}
+      <button
+        onClick={searchPalette.open}
+        aria-label="Search your library"
+        aria-haspopup="dialog"
+        className="relative flex h-11 w-full max-w-[480px] items-center rounded-full bg-bg-subtle pl-11 pr-4 text-left text-[15px] text-fg-subtle hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus"
+      >
         <Search size={20} aria-hidden className="pointer-events-none absolute left-4 top-3 text-fg-subtle" />
-        <input
-          type="search"
-          aria-label="Search your library"
-          placeholder="Search your library"
-          className="h-11 w-full rounded-full bg-bg-subtle pl-11 pr-4 text-[15px] placeholder:text-fg-subtle focus:bg-surface focus:outline-2 focus:outline-offset-0 focus:outline-focus"
-        />
-      </form>
+        <span className="flex-1 truncate">Search your library</span>
+        <kbd aria-hidden className="hidden rounded-md border border-border-strong px-1.5 py-0.5 font-mono text-[11px] text-fg-muted md:block">
+          Ctrl K
+        </kbd>
+      </button>
       <div className="ml-auto flex items-center gap-2">
         <Link
           href="/upload"

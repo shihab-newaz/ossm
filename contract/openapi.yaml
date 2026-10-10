@@ -696,12 +696,18 @@ paths:
     get:
       operationId: listHistory
       summary: Your recent plays, newest first
-      description: One entry per qualifying play, so a track played twice appears twice.
+      description: >
+        One entry per qualifying play, so a track played twice appears twice.
+        Page through it with limit and offset; the total is in X-Total-Count.
       parameters:
         - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/PageOffset"
       responses:
         "200":
           description: Recent plays
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
           content:
             application/json:
               schema:
@@ -724,6 +730,103 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/MostPlayed"
+  /api/v1/favorites:
+    get:
+      operationId: listFavorites
+      summary: Your liked tracks, most recently liked first
+      description: >
+        Everything unless limit and offset are given. Only yours: nobody else's
+        likes are ever returned. The total is in X-Total-Count.
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/PageOffset"
+      responses:
+        "200":
+          description: Liked tracks
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Track"
+  /api/v1/favorites/ids:
+    get:
+      operationId: listFavoriteIds
+      summary: The ids of every track you have liked
+      description: >
+        Small and cheap, so a client can keep it and show the like state of any
+        track it has on screen.
+      responses:
+        "200":
+          description: Track ids
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+  /api/v1/favorites/{trackId}:
+    put:
+      operationId: likeTrack
+      summary: Like a track
+      description: Liking a track you already like changes nothing.
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "204":
+          description: Liked
+        "404":
+          description: No such track
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: unlikeTrack
+      summary: Unlike a track
+      description: Unliking a track you do not like changes nothing.
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "204":
+          description: No longer liked
+  /api/v1/search:
+    get:
+      operationId: search
+      summary: Find tracks, albums and artists in the shared library
+      description: >
+        Matches whole and partial words, and tolerates typos. Tracks match on
+        their title, artist and album; albums on their title and artist; artists
+        on their name. Each group is best match first, and holds at most limit
+        items. top names the single best match across the groups (an artist
+        beats an album, which beats a track, when scores tie) and is left out
+        when nothing matches. A blank q returns empty groups.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: What to look for
+          schema:
+            type: string
+            maxLength: 200
+        - name: limit
+          in: query
+          required: false
+          description: How many to return per group (default 8, at most 50)
+          schema:
+            type: integer
+            default: 8
+      responses:
+        "200":
+          description: Matches, grouped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
   /api/v1/albums/{id}/cover:
     get:
       operationId: getAlbumCover
@@ -778,6 +881,13 @@ components:
       schema:
         type: integer
         default: 50
+    TrackId:
+      name: trackId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     UploadId:
       name: id
       in: path
@@ -1085,6 +1195,35 @@ components:
         plays:
           type: integer
           format: int64
+    SearchResults:
+      type: object
+      required: [tracks, albums, artists]
+      properties:
+        top:
+          $ref: "#/components/schemas/SearchTop"
+        tracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Track"
+        albums:
+          type: array
+          items:
+            $ref: "#/components/schemas/Album"
+        artists:
+          type: array
+          items:
+            $ref: "#/components/schemas/Artist"
+    SearchTop:
+      type: object
+      description: The best match overall. Look it up by id in the group its type names.
+      required: [type, id]
+      properties:
+        type:
+          type: string
+          enum: [track, album, artist]
+        id:
+          type: string
+          format: uuid
     UserSummary:
       type: object
       required: [id, username, role, status, createdAt]

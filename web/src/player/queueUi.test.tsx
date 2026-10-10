@@ -7,9 +7,13 @@ import { PlayerBar } from "@/components/shell/PlayerBar";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { toast } from "@/components/ui/toast";
 import { LibraryScreen } from "@/library/LibraryScreen";
+import { SearchPalette } from "@/search/SearchPalette";
+import { searchPalette } from "@/search/palette";
 import { server } from "@/test/server";
 import { player } from "./player";
 import { Shortcuts } from "./Shortcuts";
+
+vi.mock("next/navigation", async () => (await import("@/test/navigation")).navigationMock);
 
 const track = (n: number) => ({
   id: `t${n}`,
@@ -42,6 +46,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   act(() => {
+    searchPalette.close();
     player.setShuffle(false);
     player.setRepeat("off");
     player.stop();
@@ -58,6 +63,7 @@ const renderApp = () =>
       <PlayerBar />
       <ToastHost />
       <Shortcuts />
+      <SearchPalette />
     </Providers>,
   );
 const bar = () => screen.getByRole("region", { name: "Player" });
@@ -290,12 +296,62 @@ describe("keyboard shortcuts", () => {
     expect(player.getState().muted).toBe(false);
   });
 
-  it("/ focuses the search box", async () => {
+  it("/ and Ctrl+K open the search palette, with its box focused", async () => {
     const user = await playing();
 
     await user.keyboard("/");
+    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Search your library" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Search" })).not.toBeInTheDocument();
 
-    expect(screen.getByRole("searchbox", { name: "Search your library" })).toHaveFocus();
+    await user.keyboard("{Control>}k{/Control}");
+    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
+  });
+
+  it("L likes the current track, and unlikes it again", async () => {
+    const liked: string[] = [];
+    const calls: string[] = [];
+    server.use(
+      http.get("*/api/v1/favorites/ids", () => HttpResponse.json([...liked])),
+      http.put("*/api/v1/favorites/:id", ({ params }) => {
+        calls.push(`PUT ${params.id}`);
+        liked.push(params.id as string);
+        return new HttpResponse(null, { status: 204 });
+      }),
+      http.delete("*/api/v1/favorites/:id", ({ params }) => {
+        calls.push(`DELETE ${params.id}`);
+        liked.splice(liked.indexOf(params.id as string), 1);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = await playing();
+    const heart = (pressed: boolean) => within(bar()).findByRole("button", { name: "Like Song 2", pressed });
+    await heart(false);
+
+    await user.keyboard("l");
+    expect(await heart(true)).toBeInTheDocument();
+    await user.keyboard("L");
+    expect(await heart(false)).toBeInTheDocument();
+
+    await vi.waitFor(() => expect(calls).toEqual(["PUT t2", "DELETE t2"]));
+  });
+
+  it("L does nothing while typing, and when nothing is playing", async () => {
+    const calls: string[] = [];
+    server.use(http.put("*/api/v1/favorites/:id", ({ params }) => (calls.push(String(params.id)), new HttpResponse(null, { status: 204 }))));
+    const user = userEvent.setup();
+    renderApp();
+    await screen.findByRole("button", { name: "Play Song 2" });
+
+    await user.keyboard("l");
+    expect(calls).toEqual([]);
+    expect(player.getState().status).toBe("idle");
+
+    await user.click(await screen.findByRole("button", { name: "Play Song 2" }));
+    await user.click(screen.getByRole("searchbox", { name: "Search your library" }));
+    await user.keyboard("l");
+    expect(calls).toEqual([]);
   });
 
   it("? opens a help dialog that lists every shortcut, and closes again", async () => {
@@ -304,7 +360,7 @@ describe("keyboard shortcuts", () => {
     await user.keyboard("?");
     const help = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
 
-    for (const action of ["Play or pause", "Seek back or forward 5 seconds", "Previous track", "Next track", "Mute or unmute", "Search", "Show this list"]) {
+    for (const action of ["Play or pause", "Seek back or forward 5 seconds", "Previous track", "Next track", "Mute or unmute", "Like or unlike the current track", "Search", "Show this list"]) {
       expect(within(help).getByText(action)).toBeInTheDocument();
     }
     await user.keyboard("{Escape}");
@@ -319,6 +375,7 @@ describe("keyboard shortcuts", () => {
     await user.keyboard("m a/ ?");
 
     expect(search).toHaveValue("m a/ ?");
+    expect(screen.queryByRole("dialog", { name: "Search" })).not.toBeInTheDocument();
     expect(player.getState().muted).toBe(false);
     expect(player.getState().status).toBe("playing");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

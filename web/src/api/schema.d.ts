@@ -532,7 +532,7 @@ export interface paths {
         };
         /**
          * Your recent plays, newest first
-         * @description One entry per qualifying play, so a track played twice appears twice.
+         * @description One entry per qualifying play, so a track played twice appears twice. Page through it with limit and offset; the total is in X-Total-Count.
          */
         get: operations["listHistory"];
         put?: never;
@@ -555,6 +555,90 @@ export interface paths {
          * @description Counts your qualifying plays per track, highest first.
          */
         get: operations["listMostPlayed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your liked tracks, most recently liked first
+         * @description Everything unless limit and offset are given. Only yours: nobody else's likes are ever returned. The total is in X-Total-Count.
+         */
+        get: operations["listFavorites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/favorites/ids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The ids of every track you have liked
+         * @description Small and cheap, so a client can keep it and show the like state of any track it has on screen.
+         */
+        get: operations["listFavoriteIds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/favorites/{trackId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Like a track
+         * @description Liking a track you already like changes nothing.
+         */
+        put: operations["likeTrack"];
+        post?: never;
+        /**
+         * Unlike a track
+         * @description Unliking a track you do not like changes nothing.
+         */
+        delete: operations["unlikeTrack"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find tracks, albums and artists in the shared library
+         * @description Matches whole and partial words, and tolerates typos. Tracks match on their title, artist and album; albums on their title and artist; artists on their name. Each group is best match first, and holds at most limit items. top names the single best match across the groups (an artist beats an album, which beats a track, when scores tie) and is left out when nothing matches. A blank q returns empty groups.
+         */
+        get: operations["search"];
         put?: never;
         post?: never;
         delete?: never;
@@ -753,6 +837,19 @@ export interface components {
             /** Format: int64 */
             plays: number;
         };
+        SearchResults: {
+            top?: components["schemas"]["SearchTop"];
+            tracks: components["schemas"]["Track"][];
+            albums: components["schemas"]["Album"][];
+            artists: components["schemas"]["Artist"][];
+        };
+        /** @description The best match overall. Look it up by id in the group its type names. */
+        SearchTop: {
+            /** @enum {string} */
+            type: "track" | "album" | "artist";
+            /** Format: uuid */
+            id: string;
+        };
         UserSummary: {
             /** Format: uuid */
             id: string;
@@ -831,6 +928,7 @@ export interface components {
         PageOffset: number;
         /** @description How many to return (default 50, at most 200) */
         Limit: number;
+        TrackId: string;
         UploadId: string;
         UserId: string;
         InviteToken: string;
@@ -1802,6 +1900,7 @@ export interface operations {
             query?: {
                 /** @description How many to return (default 50, at most 200) */
                 limit?: components["parameters"]["Limit"];
+                offset?: components["parameters"]["PageOffset"];
             };
             header?: never;
             path?: never;
@@ -1812,6 +1911,7 @@ export interface operations {
             /** @description Recent plays */
             200: {
                 headers: {
+                    "X-Total-Count": components["headers"]["TotalCount"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -1839,6 +1939,125 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MostPlayed"][];
+                };
+            };
+        };
+    };
+    listFavorites: {
+        parameters: {
+            query?: {
+                /** @description Page size, 1 to 1000. Leave out (with offset) for everything. */
+                limit?: components["parameters"]["PageLimit"];
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liked tracks */
+            200: {
+                headers: {
+                    "X-Total-Count": components["headers"]["TotalCount"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Track"][];
+                };
+            };
+        };
+    };
+    listFavoriteIds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Track ids */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    likeTrack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trackId: components["parameters"]["TrackId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such track */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    unlikeTrack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trackId: components["parameters"]["TrackId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No longer liked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    search: {
+        parameters: {
+            query: {
+                /** @description What to look for */
+                q: string;
+                /** @description How many to return per group (default 8, at most 50) */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matches, grouped */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResults"];
                 };
             };
         };
