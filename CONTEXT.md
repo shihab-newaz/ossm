@@ -11,3 +11,15 @@ Domain terms for OSSM. Filled in lazily as the language settles; add a term when
 **Genre slug**: a genre name lowercased, with runs of non-alphanumeric characters turned into one hyphen. "Hip-Hop", "hip hop" and "HIP/HOP" share the slug `hip-hop` and count as one genre.
 
 **Featured album**: the newest album that has a cover. Shown in the Explore banner.
+
+**Video**: a movie or an episode in the video library (spec 03). Separate from a track: its own table, its own player engine.
+
+**Movie**: a video that stands alone, with a title and optional year.
+
+**Show**: a series that groups episodes. Season is a number on the episode, not its own record.
+
+**Episode**: a video that belongs to a show, with a season number, episode number and optional episode title. Parsed from filenames like `S01E02` or `1x02`, editable afterwards.
+
+**Playable**: set at ingest when the browser can play a video's container and codecs as stored. A video that is not playable is still kept, with a "may not play in this browser" badge. There is no transcoding.
+
+**Watch progress**: a user's last position in a video and whether it is watched (90% or fewer than 2 minutes left). Last write wins. It is not a playback event.

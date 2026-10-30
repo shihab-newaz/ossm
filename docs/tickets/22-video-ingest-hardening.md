@@ -1,0 +1,23 @@
+# 22: Video ingest hardening (all containers, playability, dedupe, filenames)
+
+**Parent:** docs/specs/03-video-library.md
+**Status:** ready-for-agent
+**Blocked by:** 20 (Video upload and ingest)
+
+## What to build
+
+- Sniffing by bytes: ISO BMFF (MP4/M4V/MOV) and EBML (WebM/MKV). A file with no video stream is rejected with a readable reason; an audio file sent as video is pointed to the audio path.
+- Playability rule from spec 03 (as corrected by ticket 19) as a pure function. `playable = false` shows a "may not play in this browser" badge, and the watch page shows a clear message if the element errors.
+- Dedupe by streamed SHA-256, with the same partial unique index pattern as tracks; a duplicate ends as `DUPLICATE` and its object is deleted.
+- Filename parser: `SxxEyy`, `NxNN`, `Title (Year)`, separators `.` `_` and space. An episode match creates or reuses a Show (by normalised name key, like artists).
+- Retry policy, ffmpeg timeouts and the admin failures list cover video.
+
+## Acceptance criteria
+
+- [ ] MP4, MOV, WebM and MKV fixtures ingest; a renamed text file and a pure-audio MKV are rejected with readable reasons.
+- [ ] An MKV with HEVC ingests as `playable = false` and shows the badge.
+- [ ] Uploading the same video twice ends as `DUPLICATE` (including two at once).
+- [ ] Parser unit tests cover the patterns in spec 03 story 9 and a no-match fallback.
+- [ ] An ffprobe timeout is a terminal failure with a readable reason, and retry works from the upload screen.
+
+## Comments

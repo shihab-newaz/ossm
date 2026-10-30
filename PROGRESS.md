@@ -27,6 +27,22 @@ Where OSSM stands against `docs/specs/01-phase-1-core-app.md`. Tickets are in `d
 
 "in-review" means the code and automated tests are finished and CI is green, but nobody has looked at it in a real browser yet.
 
+## Video library (spec 03)
+
+Spec: `docs/specs/03-video-library.md`. Started 2026-10-30 and runs alongside the rest of Phase 1. Decisions: a general library of movies and shows, played straight from the file (no transcoding), ffmpeg used only for probing, thumbnails and subtitles (ADR 0009), MP4/MOV/WebM/MKV accepted, 20 GB cap, sidecar and embedded text subtitles.
+
+| # | Ticket | Status |
+| --- | --- | --- |
+| 19 | Video spike | next |
+| 20 | Video upload and ingest (MP4 happy path) | ready |
+| 21 | Stream and watch a video | ready |
+| 22 | Video ingest hardening | ready |
+| 23 | Shows and metadata editing | ready |
+| 24 | Subtitles | ready |
+| 25 | Watch progress and Continue watching | ready |
+| 26 | Videos in navigation, Explore and search | ready |
+| 27 | Video on mobile and polish | ready |
+
 ## What works today
 
 - **Auth:** first-run setup, cookie sessions stored in Postgres, ADMIN and USER roles, invites, user management. Unauthenticated `/api/**` returns 401.
