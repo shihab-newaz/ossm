@@ -37,8 +37,8 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 
-    // Serves /v3/api-docs so a test can compare the running API with contract/openapi.yaml.
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.1.1")
+    // Serves the OpenAPI document (a test compares it with contract/openapi.yaml) and Swagger UI.
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")

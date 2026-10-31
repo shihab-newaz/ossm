@@ -46,11 +46,15 @@ management:
       exposure:
         include: health
 
+# Under /api so Caddy (and the Next.js dev rewrite) route it to the API.
+# Swagger UI: /api/docs redirects to /api/swagger-ui/index.html, which loads /api/v3/api-docs.
+# /v3/api-docs still answers (a forward, see ApiDocsConfig) for the contract test and tools.
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    path: /api/v3/api-docs
   swagger-ui:
-    enabled: false
+    enabled: ${SWAGGER_UI_ENABLED:true}
+    path: /api/docs
 
 ossm:
   storage:
