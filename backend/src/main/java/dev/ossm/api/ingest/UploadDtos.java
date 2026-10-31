@@ -15,7 +15,20 @@ import java.util.UUID;
 /** Wire types for uploads. Names become schema names in contract/openapi.yaml. */
 final class UploadDtos {
 
+  /** Audio files: 250 MB (spec 01). */
   static final long MAX_BYTES = 250L * 1024 * 1024;
+
+  /** Video files: 20 GB (spec 03). The largest size the API accepts at all. */
+  static final long MAX_VIDEO_BYTES = 20L * 1024 * 1024 * 1024;
+
+  /** Part URLs come in pages of this many: a 20 GB file has about 1,280 parts. */
+  static final int PART_PAGE = 200;
+
+  /** What an upload holds, from its file extension. Ingest still checks the bytes. */
+  enum UploadKind {
+    AUDIO,
+    VIDEO
+  }
 
   private UploadDtos() {}
 
@@ -35,7 +48,7 @@ final class UploadDtos {
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
           @NotNull(message = "File size is missing")
           @Min(value = 1, message = "That file is empty")
-          @Max(value = MAX_BYTES, message = "Files can be at most 250 MB")
+          @Max(value = MAX_VIDEO_BYTES, message = "Files can be at most 20 GB")
           Long sizeBytes,
       @Schema(
               description = "Defaults to All rights reserved",
@@ -56,8 +69,10 @@ final class UploadDtos {
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String filename,
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long sizeBytes,
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UploadStatus status,
+      @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UploadKind kind,
       String error,
       UUID trackId,
+      UUID videoId,
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt) {}
 
   record UploadPart(
@@ -67,7 +82,12 @@ final class UploadDtos {
   record UploadTicket(
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Upload upload,
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long partSizeBytes,
-      @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<UploadPart> parts) {}
+      @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "How many parts in all")
+          int partCount,
+      @Schema(
+              requiredMode = Schema.RequiredMode.REQUIRED,
+              description = "The first parts; ask /uploads/{id}/parts for the rest")
+          List<UploadPart> parts) {}
 
   record CompletedPart(
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) @Min(1) int partNumber,

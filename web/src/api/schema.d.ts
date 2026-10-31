@@ -295,6 +295,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/uploads/{id}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * More presigned part URLs for an upload in progress
+         * @description The ticket from createUpload carries the first 200 parts. A larger upload (video can be 20 GB, about 1,280 parts) asks for the rest here, 200 at a time, starting at part number from.
+         */
+        get: operations["listUploadParts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/uploads/{id}/retry": {
         parameters: {
             query?: never;
@@ -795,7 +815,10 @@ export interface components {
     schemas: {
         CreateUploadRequest: {
             filename: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description At most 250 MB for audio and 20 GB for video (by file extension)
+             */
             sizeBytes: number;
             /**
              * @description Defaults to All rights reserved
@@ -812,6 +835,9 @@ export interface components {
             upload: components["schemas"]["Upload"];
             /** Format: int64 */
             partSizeBytes: number;
+            /** @description How many parts in all */
+            partCount: number;
+            /** @description The first parts; ask /uploads/{id}/parts for the rest */
             parts: components["schemas"]["UploadPart"][];
         };
         CompletedPart: {
@@ -829,6 +855,16 @@ export interface components {
             sizeBytes: number;
             /** @enum {string} */
             status: "UPLOADING" | "INGESTING" | "DONE" | "FAILED" | "DUPLICATE";
+            /**
+             * @description From the file extension; ingest still checks the bytes
+             * @enum {string}
+             */
+            kind: "AUDIO" | "VIDEO";
+            /**
+             * Format: uuid
+             * @description Present when a video upload is DONE, or DUPLICATE (the video already in the library)
+             */
+            videoId?: string;
             /** @description Readable reason, present when status is FAILED */
             error?: string;
             /**
@@ -1733,6 +1769,48 @@ export interface operations {
                 };
             };
             /** @description Already completed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listUploadParts: {
+        parameters: {
+            query?: {
+                from?: number;
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["UploadId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to 200 part URLs, from part from on */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadPart"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The upload is no longer in progress */
             409: {
                 headers: {
                     [name: string]: unknown;

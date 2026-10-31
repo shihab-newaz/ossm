@@ -2,6 +2,7 @@ package dev.ossm.api.ingest;
 
 import dev.ossm.api.ingest.UploadDtos.CompleteUploadRequest;
 import dev.ossm.api.ingest.UploadDtos.Upload;
+import dev.ossm.api.ingest.UploadDtos.UploadKind;
 import dev.ossm.api.ingest.UploadDtos.UploadPart;
 import dev.ossm.api.ingest.UploadDtos.UploadStatus;
 import dev.ossm.api.ingest.UploadDtos.UploadTicket;
@@ -13,6 +14,7 @@ import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.springframework.http.HttpStatus;
@@ -62,9 +64,15 @@ class UploadService {
     } catch (IllegalArgumentException e) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
     }
+    var kind = kindOf(filename);
+    var limit = kind == UploadKind.VIDEO ? UploadDtos.MAX_VIDEO_BYTES : UploadDtos.MAX_BYTES;
+    if (sizeBytes > limit) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, tooBig(kind));
+    }
     var bucketName = bucket.ensure();
     var id = UUID.randomUUID();
-    var key = "audio/" + id + IngestService.extensionOf(filename);
+    var key =
+        (kind == UploadKind.VIDEO ? "video/" : "audio/") + id + IngestService.extensionOf(filename);
     var multipart =
         s3.createMultipartUpload(
             CreateMultipartUploadRequest.builder()
@@ -74,7 +82,8 @@ class UploadService {
                 .build());
     jdbc.sql(
             "insert into upload (id, user_id, filename, size_bytes, object_key, s3_upload_id, status,"
-                + " license) values (:id, :user, :filename, :size, :key, :s3, 'UPLOADING', :license)")
+                + " license, kind) values (:id, :user, :filename, :size, :key, :s3, 'UPLOADING',"
+                + " :license, :kind)")
         .param("id", id)
         .param("user", userId)
         .param("filename", filename)
@@ -82,40 +91,104 @@ class UploadService {
         .param("key", key)
         .param("s3", multipart.uploadId())
         .param("license", license)
+        .param("kind", kind.name())
         .update();
 
-    int count = (int) ((sizeBytes + PART_SIZE - 1) / PART_SIZE);
-    List<UploadPart> parts =
-        IntStream.rangeClosed(1, count)
-            .mapToObj(
-                n ->
-                    new UploadPart(
-                        n,
-                        presigner
-                            .presignUploadPart(
-                                UploadPartPresignRequest.builder()
-                                    .signatureDuration(URL_LIFETIME)
-                                    .uploadPartRequest(
-                                        UploadPartRequest.builder()
-                                            .bucket(bucketName)
-                                            .key(key)
-                                            .uploadId(multipart.uploadId())
-                                            .partNumber(n)
-                                            .build())
-                                    .build())
-                            .url()
-                            .toString()))
-            .toList();
-    return new UploadTicket(find(userId, id).orElseThrow(), PART_SIZE, parts);
+    int count = partCount(sizeBytes);
+    var parts =
+        presignParts(
+            bucketName, key, multipart.uploadId(), 1, Math.min(count, UploadDtos.PART_PAGE));
+    return new UploadTicket(find(userId, id).orElseThrow(), PART_SIZE, count, parts);
+  }
+
+  private record Pending(String key, String s3UploadId, String status, long sizeBytes) {}
+
+  /** The next page of part URLs, from part {@code from} on, while the upload is in progress. */
+  List<UploadPart> parts(UUID userId, UUID id, int from) {
+    var row =
+        jdbc.sql(
+                "select object_key, s3_upload_id, status, size_bytes from upload"
+                    + " where id = :id and user_id = :user")
+            .param("id", id)
+            .param("user", userId)
+            .query(
+                (rs, i) ->
+                    new Pending(
+                        rs.getString("object_key"),
+                        rs.getString("s3_upload_id"),
+                        rs.getString("status"),
+                        rs.getLong("size_bytes")))
+            .optional()
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such upload."));
+    if (!row.status().equals("UPLOADING")) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "This upload is no longer in progress.");
+    }
+    int count = partCount(row.sizeBytes());
+    if (from < 1 || from > count) {
+      return List.of();
+    }
+    int last = Math.min(count, from + UploadDtos.PART_PAGE - 1);
+    return presignParts(bucket.ensure(), row.key(), row.s3UploadId(), from, last);
+  }
+
+  private static int partCount(long sizeBytes) {
+    return (int) ((sizeBytes + PART_SIZE - 1) / PART_SIZE);
+  }
+
+  private List<UploadPart> presignParts(
+      String bucketName, String key, String uploadId, int from, int to) {
+    return IntStream.rangeClosed(from, to)
+        .mapToObj(
+            n ->
+                new UploadPart(
+                    n,
+                    presigner
+                        .presignUploadPart(
+                            UploadPartPresignRequest.builder()
+                                .signatureDuration(URL_LIFETIME)
+                                .uploadPartRequest(
+                                    UploadPartRequest.builder()
+                                        .bucket(bucketName)
+                                        .key(key)
+                                        .uploadId(uploadId)
+                                        .partNumber(n)
+                                        .build())
+                                .build())
+                        .url()
+                        .toString()))
+        .toList();
+  }
+
+  private static final Set<String> VIDEO_EXTENSIONS =
+      Set.of(".mp4", ".m4v", ".mov", ".webm", ".mkv");
+
+  /** Video by its extension; everything else is treated as audio, and sniffed as such. */
+  static UploadKind kindOf(String filename) {
+    return VIDEO_EXTENSIONS.contains(IngestService.extensionOf(filename))
+        ? UploadKind.VIDEO
+        : UploadKind.AUDIO;
+  }
+
+  static String tooBig(UploadKind kind) {
+    return kind == UploadKind.VIDEO
+        ? "Videos can be at most 20 GB."
+        : "Files can be at most 250 MB.";
   }
 
   Upload complete(UUID userId, UUID id, CompleteUploadRequest request) {
     var row =
         jdbc.sql(
-                "select object_key, s3_upload_id, status from upload where id = :id and user_id = :user")
+                "select object_key, s3_upload_id, status, kind from upload"
+                    + " where id = :id and user_id = :user")
             .param("id", id)
             .param("user", userId)
-            .query((rs, i) -> new String[] {rs.getString(1), rs.getString(2), rs.getString(3)})
+            .query(
+                (rs, i) ->
+                    new String[] {
+                      rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4)
+                    })
             .optional()
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such upload."));
@@ -149,14 +222,15 @@ class UploadService {
 
     // The size was declared up front, but presigned URLs cannot enforce it, so check what arrived.
     var stored = s3.headObject(b -> b.bucket(bucketName).key(key)).contentLength();
-    if (stored > UploadDtos.MAX_BYTES) {
+    var kind = UploadKind.valueOf(row[3]);
+    if (stored > (kind == UploadKind.VIDEO ? UploadDtos.MAX_VIDEO_BYTES : UploadDtos.MAX_BYTES)) {
       s3.deleteObject(b -> b.bucket(bucketName).key(key));
       jdbc.sql(
               "update upload set status = 'FAILED', error = :error, updated_at = now() where id = :id")
-          .param("error", "Files can be at most 250 MB.")
+          .param("error", tooBig(kind))
           .param("id", id)
           .update();
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Files can be at most 250 MB.");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, tooBig(kind));
     }
 
     // Queue first, then flip the status: a job that wins the race must not be overwritten.
@@ -207,7 +281,8 @@ class UploadService {
   }
 
   private static final String SELECT =
-      "select id, filename, size_bytes, status, error, track_id, created_at from upload";
+      "select id, filename, size_bytes, status, kind, error, track_id, video_id, created_at"
+          + " from upload";
 
   private static Upload map(ResultSet rs, int row) throws SQLException {
     return new Upload(
@@ -215,8 +290,10 @@ class UploadService {
         rs.getString("filename"),
         rs.getLong("size_bytes"),
         UploadStatus.valueOf(rs.getString("status")),
+        UploadKind.valueOf(rs.getString("kind")),
         rs.getString("error"),
         rs.getObject("track_id", UUID.class),
+        rs.getObject("video_id", UUID.class),
         rs.getObject("created_at", OffsetDateTime.class).toInstant());
   }
 }

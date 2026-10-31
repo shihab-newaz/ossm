@@ -386,6 +386,44 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /api/v1/uploads/{id}/parts:
+    get:
+      operationId: listUploadParts
+      summary: More presigned part URLs for an upload in progress
+      description: >
+        The ticket from createUpload carries the first 200 parts. A larger
+        upload (video can be 20 GB, about 1,280 parts) asks for the rest here,
+        200 at a time, starting at part number from.
+      parameters:
+        - $ref: "#/components/parameters/UploadId"
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+      responses:
+        "200":
+          description: Up to 200 part URLs, from part from on
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UploadPart"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: The upload is no longer in progress
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /api/v1/uploads/{id}/retry:
     post:
       operationId: retryUpload
@@ -749,13 +787,11 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
-  # Video library (spec 03). Every operation and schema below is marked x-ossm-planned: the web
-  # UI builds against it now, and the backend's contract test skips it until tickets 20 to 25
-  # implement it. Remove the marker in the ticket that serves the operation.
+  # Video library (spec 03). An operation or schema marked x-ossm-planned: true is skipped by the
+  # backend's contract test until it is served (OpenApiContractTest).
   /api/v1/videos:
     get:
       operationId: listVideos
-      x-ossm-planned: true
       summary: Videos in the shared library
       description: >
         Movies or episodes, by kind. Everything unless limit and offset are
@@ -793,7 +829,6 @@ paths:
   /api/v1/videos/recent:
     get:
       operationId: listRecentVideos
-      x-ossm-planned: true
       summary: The newest movies and episodes, newest first
       parameters:
         - $ref: "#/components/parameters/Limit"
@@ -809,7 +844,6 @@ paths:
   /api/v1/videos/continue-watching:
     get:
       operationId: listContinueWatching
-      x-ossm-planned: true
       summary: Your videos in progress, most recently watched first
       description: Watched videos are left out, and a show appears once, as its latest episode.
       parameters:
@@ -826,7 +860,6 @@ paths:
   /api/v1/videos/{id}:
     get:
       operationId: getVideo
-      x-ossm-planned: true
       summary: A video, its subtitles and what to watch next
       parameters:
         - $ref: "#/components/parameters/VideoId"
@@ -845,7 +878,6 @@ paths:
                 $ref: "#/components/schemas/Problem"
     patch:
       operationId: updateVideo
-      x-ossm-planned: true
       summary: Correct a video's details
       description: >
         Only the uploader and admins. Turning a video into an episode files it
@@ -887,7 +919,6 @@ paths:
   /api/v1/videos/{id}/stream:
     get:
       operationId: streamVideo
-      x-ossm-planned: true
       summary: The video file, as stored (direct play, no transcoding)
       description: Same rules as the track stream (ADR 0006), including a single byte range.
       parameters:
@@ -924,7 +955,6 @@ paths:
   /api/v1/videos/{id}/thumbnail:
     get:
       operationId: getVideoThumbnail
-      x-ossm-planned: true
       summary: The frame taken from the video at ingest
       parameters:
         - $ref: "#/components/parameters/VideoId"
@@ -945,7 +975,6 @@ paths:
   /api/v1/videos/{id}/subtitles:
     post:
       operationId: addSubtitle
-      x-ossm-planned: true
       summary: Attach a subtitle file (.srt or .vtt) to a video
       description: SRT is converted to WebVTT. At most 2 MB.
       parameters:
@@ -986,7 +1015,6 @@ paths:
   /api/v1/videos/{id}/subtitles/{index}:
     get:
       operationId: getSubtitle
-      x-ossm-planned: true
       summary: One subtitle track as WebVTT
       parameters:
         - $ref: "#/components/parameters/VideoId"
@@ -1012,7 +1040,6 @@ paths:
   /api/v1/videos/{id}/progress:
     put:
       operationId: saveWatchProgress
-      x-ossm-planned: true
       summary: Remember where you are in a video
       description: >
         Last write wins. The video counts as watched once 90% of it or all but
@@ -1047,7 +1074,6 @@ paths:
   /api/v1/shows:
     get:
       operationId: listShows
-      x-ossm-planned: true
       summary: Shows in the shared library
       description: >
         Everything unless limit and offset are given. Sorted by sort (added:
@@ -1078,7 +1104,6 @@ paths:
   /api/v1/shows/{id}:
     get:
       operationId: getShow
-      x-ossm-planned: true
       summary: A show and its episodes by season
       parameters:
         - name: id
@@ -1169,7 +1194,8 @@ components:
           type: integer
           format: int64
           minimum: 1
-          maximum: 262144000
+          maximum: 21474836480
+          description: At most 250 MB for audio and 20 GB for video (by file extension)
         license:
           type: string
           description: Defaults to All rights reserved
@@ -1186,15 +1212,19 @@ components:
           description: Presigned URL to PUT this part to
     UploadTicket:
       type: object
-      required: [upload, partSizeBytes, parts]
+      required: [upload, partSizeBytes, partCount, parts]
       properties:
         upload:
           $ref: "#/components/schemas/Upload"
         partSizeBytes:
           type: integer
           format: int64
+        partCount:
+          type: integer
+          description: How many parts in all
         parts:
           type: array
+          description: The first parts; ask /uploads/{id}/parts for the rest
           items:
             $ref: "#/components/schemas/UploadPart"
     CompletedPart:
@@ -1217,7 +1247,7 @@ components:
             $ref: "#/components/schemas/CompletedPart"
     Upload:
       type: object
-      required: [id, filename, sizeBytes, status, createdAt]
+      required: [id, filename, sizeBytes, status, kind, createdAt]
       properties:
         id:
           type: string
@@ -1230,6 +1260,14 @@ components:
         status:
           type: string
           enum: [UPLOADING, INGESTING, DONE, FAILED, DUPLICATE]
+        kind:
+          type: string
+          enum: [AUDIO, VIDEO]
+          description: From the file extension; ingest still checks the bytes
+        videoId:
+          type: string
+          format: uuid
+          description: Present when a video upload is DONE, or DUPLICATE (the video already in the library)
         error:
           type: string
           description: Readable reason, present when status is FAILED
@@ -1578,7 +1616,6 @@ components:
           type: string
           enum: [UP, DOWN]
     Video:
-      x-ossm-planned: true
       type: object
       required: [id, kind, title, durationMs, playable, license, uploadedBy, createdAt]
       properties:
@@ -1643,7 +1680,6 @@ components:
         progress:
           $ref: "#/components/schemas/WatchProgress"
     VideoDetail:
-      x-ossm-planned: true
       type: object
       required: [video, subtitles, upNext, canEdit]
       properties:
@@ -1664,7 +1700,6 @@ components:
           type: boolean
           description: Whether you may change its details (you uploaded it, or you are an admin)
     VideoUpdate:
-      x-ossm-planned: true
       type: object
       required: [kind, title]
       properties:
@@ -1686,7 +1721,6 @@ components:
           type: integer
           minimum: 0
     Subtitle:
-      x-ossm-planned: true
       type: object
       required: [index, label, url]
       properties:
@@ -1702,7 +1736,6 @@ components:
           type: string
           description: Same-origin path to the WebVTT file
     WatchProgress:
-      x-ossm-planned: true
       type: object
       required: [positionMs, durationMs, watched, updatedAt]
       properties:
@@ -1718,7 +1751,6 @@ components:
           type: string
           format: date-time
     WatchProgressRequest:
-      x-ossm-planned: true
       type: object
       required: [positionMs, durationMs]
       properties:
@@ -1731,7 +1763,6 @@ components:
           format: int64
           minimum: 0
     Show:
-      x-ossm-planned: true
       type: object
       required: [id, name, seasonCount, episodeCount]
       properties:
@@ -1750,7 +1781,6 @@ components:
         progress:
           $ref: "#/components/schemas/WatchProgress"
     ShowDetail:
-      x-ossm-planned: true
       type: object
       required: [show, uploadedBy, seasons]
       properties:
@@ -1766,7 +1796,6 @@ components:
         resume:
           $ref: "#/components/schemas/Video"
     Season:
-      x-ossm-planned: true
       type: object
       required: [number, episodes]
       properties:

@@ -39,12 +39,19 @@ class IngestService {
   private final S3Client s3;
   private final Bucket bucket;
   private final TransactionTemplate transaction;
+  private final VideoIngestService videos;
 
-  IngestService(JdbcClient jdbc, S3Client s3, Bucket bucket, TransactionTemplate transaction) {
+  IngestService(
+      JdbcClient jdbc,
+      S3Client s3,
+      Bucket bucket,
+      TransactionTemplate transaction,
+      VideoIngestService videos) {
     this.jdbc = jdbc;
     this.s3 = s3;
     this.bucket = bucket;
     this.transaction = transaction;
+    this.videos = videos;
   }
 
   private record UploadRow(
@@ -54,12 +61,13 @@ class IngestService {
       long sizeBytes,
       String objectKey,
       String status,
-      String license) {}
+      String license,
+      String kind) {}
 
   void ingest(UUID uploadId) {
     var upload =
         jdbc.sql(
-                "select id, user_id, filename, size_bytes, object_key, status, license from upload"
+                "select id, user_id, filename, size_bytes, object_key, status, license, kind from upload"
                     + " where id = :id")
             .param("id", uploadId)
             .query(
@@ -71,7 +79,8 @@ class IngestService {
                         rs.getLong("size_bytes"),
                         rs.getString("object_key"),
                         rs.getString("status"),
-                        rs.getString("license")))
+                        rs.getString("license"),
+                        rs.getString("kind")))
             .optional();
     if (upload.isEmpty()
         || !(upload.get().status().equals("UPLOADING")
@@ -79,6 +88,21 @@ class IngestService {
       return;
     }
     var row = upload.get();
+    if (row.kind().equals("VIDEO")) {
+      try {
+        videos.ingest(
+            new VideoIngestService.Upload(
+                row.id(),
+                row.userId(),
+                row.filename(),
+                row.sizeBytes(),
+                row.objectKey(),
+                row.license()));
+      } catch (NoSuchKeyException e) {
+        fail(uploadId, "The uploaded file could not be found in storage.");
+      }
+      return;
+    }
     Path dir = null;
     try {
       dir = Files.createTempDirectory("ossm-ingest");

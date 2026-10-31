@@ -1,13 +1,24 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { LibraryScreen } from "@/library/LibraryScreen";
 import { Providers } from "@/components/Providers";
 import { problem } from "@/test/handlers";
 import { server } from "@/test/server";
 import { UploadScreen } from "./UploadScreen";
 import { MAX_BYTES } from "./uploader";
+
+// jsdom's FormData and File cannot be sent by Node's fetch, so the multipart subtitle request is
+// stood in for here. Everything else in this file goes through the real client and MSW.
+const subtitleUploads = vi.hoisted(() => [] as string[]);
+vi.mock("./uploader", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./uploader")>()),
+  uploadSubtitle: async (videoId: string, file: File) => {
+    subtitleUploads.push(`${videoId}:${file.name}`);
+    return { index: 0, language: "en", label: "English", url: "/x" };
+  },
+}));
 
 const UPLOAD_ID = "9d4c1c2e-5a55-4d1e-9a70-0c1d2b3a4e5f";
 const base = { id: UPLOAD_ID, filename: "song.mp3", sizeBytes: 10, createdAt: "2026-10-02T10:00:00Z" };
@@ -64,7 +75,7 @@ describe("uploading", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), mp3());
+    await user.upload(screen.getByLabelText("Music or video files"), mp3());
 
     // Part one is in storage, part two is still in flight: half way.
     const bar = await screen.findByRole("progressbar", { name: "Uploading song.mp3" });
@@ -90,7 +101,7 @@ describe("uploading", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), mp3("notes.mp3"));
+    await user.upload(screen.getByLabelText("Music or video files"), mp3("notes.mp3"));
 
     expect(await screen.findByRole("alert", undefined, { timeout: 5000 })).toHaveTextContent("could not be read as audio");
   });
@@ -102,7 +113,7 @@ describe("uploading", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), huge);
+    await user.upload(screen.getByLabelText("Music or video files"), huge);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("at most 250 MB");
     expect(calls.created).toBe(0);
@@ -113,7 +124,7 @@ describe("uploading", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), mp3("empty.mp3", 0));
+    await user.upload(screen.getByLabelText("Music or video files"), mp3("empty.mp3", 0));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("empty");
     expect(calls.created).toBe(0);
@@ -124,7 +135,7 @@ describe("uploading", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), mp3());
+    await user.upload(screen.getByLabelText("Music or video files"), mp3());
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Files can be at most 250 MB.");
   });
@@ -135,7 +146,7 @@ describe("uploading", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), mp3());
+    await user.upload(screen.getByLabelText("Music or video files"), mp3());
 
     expect(await screen.findByRole("alert")).toHaveTextContent("storage server refused");
   });
@@ -145,7 +156,7 @@ describe("uploading", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), [mp3("a.mp3"), mp3("b.mp3")]);
+    await user.upload(screen.getByLabelText("Music or video files"), [mp3("a.mp3"), mp3("b.mp3")]);
 
     await waitFor(() => expect(calls.created).toBe(2), { timeout: 5000 });
     const list = screen.getByRole("list", { name: "Uploads" });
@@ -160,12 +171,12 @@ describe("license, duplicates and retry", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), mp3("first.mp3"));
+    await user.upload(screen.getByLabelText("Music or video files"), mp3("first.mp3"));
     await waitFor(() => expect(calls.created).toBe(1), { timeout: 5000 });
     expect(calls.createBody).toMatchObject({ filename: "first.mp3", license: "All rights reserved" });
 
     await user.selectOptions(screen.getByLabelText("License"), "CC BY");
-    await user.upload(screen.getByLabelText("Audio files"), mp3("second.mp3"));
+    await user.upload(screen.getByLabelText("Music or video files"), mp3("second.mp3"));
     await waitFor(() => expect(calls.created).toBe(2), { timeout: 5000 });
     expect(calls.createBody).toMatchObject({ filename: "second.mp3", license: "CC BY" });
   });
@@ -175,7 +186,7 @@ describe("license, duplicates and retry", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), mp3());
+    await user.upload(screen.getByLabelText("Music or video files"), mp3());
 
     expect(await screen.findByText(/Already in your library/, undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -186,7 +197,7 @@ describe("license, duplicates and retry", () => {
     let retried = 0;
     const user = userEvent.setup();
     renderUpload();
-    await user.upload(screen.getByLabelText("Audio files"), mp3());
+    await user.upload(screen.getByLabelText("Music or video files"), mp3());
     expect(await screen.findByRole("alert", undefined, { timeout: 5000 })).toHaveTextContent("could not be found in storage");
 
     // The cause is fixed server-side: after a retry the job runs and finishes.
@@ -209,7 +220,7 @@ describe("license, duplicates and retry", () => {
     server.use(http.post("*/api/v1/uploads/:id/retry", () => problem(409, "Conflict", "Only failed uploads can be retried.")));
     const user = userEvent.setup();
     renderUpload();
-    await user.upload(screen.getByLabelText("Audio files"), mp3());
+    await user.upload(screen.getByLabelText("Music or video files"), mp3());
     await screen.findByRole("button", { name: "Retry" }, { timeout: 5000 });
 
     await user.click(screen.getByRole("button", { name: "Retry" }));
@@ -224,7 +235,7 @@ describe("license, duplicates and retry", () => {
     const user = userEvent.setup();
     renderUpload();
 
-    await user.upload(screen.getByLabelText("Audio files"), huge);
+    await user.upload(screen.getByLabelText("Music or video files"), huge);
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
@@ -270,5 +281,107 @@ describe("the library list", () => {
 
     expect(await screen.findByRole("heading", { name: "Your library is empty" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Upload music" })).toHaveAttribute("href", "/upload");
+  });
+});
+
+describe("videos and folders", () => {
+  const VIDEO_ID = "5b1c1c2e-5a55-4d1e-9a70-0c1d2b3a4e5f";
+  const mp4 = (name = "Sintel (2010).mp4", bytes = 15) => new File([new Uint8Array(bytes)], name, { type: "video/mp4" });
+
+  /** A video split into three 5-byte parts, of which the ticket carries only the first. */
+  function mockVideo() {
+    const calls = { pagesAskedFrom: [] as number[], parts: [] as number[] };
+    const videoBase = { ...base, filename: "Sintel (2010).mp4", sizeBytes: 15, kind: "VIDEO" };
+    server.use(
+      http.post("*/api/v1/uploads", () =>
+        HttpResponse.json({ upload: { ...videoBase, status: "UPLOADING" }, partSizeBytes: 5, partCount: 3, parts: [{ partNumber: 1, url: storeUrl(1) }] }, { status: 201 }),
+      ),
+      http.get("*/api/v1/uploads/:id/parts", ({ request }) => {
+        const from = Number(new URL(request.url).searchParams.get("from"));
+        calls.pagesAskedFrom.push(from);
+        return HttpResponse.json([
+          { partNumber: 2, url: storeUrl(2) },
+          { partNumber: 3, url: storeUrl(3) },
+        ]);
+      }),
+      http.put(`${window.location.origin}/ossm/audio/:key`, ({ request }) => {
+        const part = Number(new URL(request.url).searchParams.get("part"));
+        calls.parts.push(part);
+        return new HttpResponse(null, { status: 200, headers: { ETag: `"etag-${part}"` } });
+      }),
+      http.post("*/api/v1/uploads/:id/complete", () => HttpResponse.json({ ...videoBase, status: "INGESTING" }, { status: 202 })),
+      http.get("*/api/v1/uploads/:id", () => HttpResponse.json({ ...videoBase, status: "DONE", videoId: VIDEO_ID })),
+    );
+    return calls;
+  }
+
+  it("uploads a video, asking for the rest of its part URLs, and links to the watch page", async () => {
+    const calls = mockVideo();
+    const user = userEvent.setup();
+    renderUpload();
+
+    await user.upload(screen.getByLabelText("Music or video files"), mp4());
+
+    expect(await screen.findByText(/Added to your videos/, undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(calls.pagesAskedFrom).toEqual([2]);
+    expect(calls.parts).toEqual([1, 2, 3]);
+    expect(screen.getByRole("link", { name: "Watch" })).toHaveAttribute("href", `/watch/${VIDEO_ID}`);
+  });
+
+  it("attaches subtitle files to the video with the same name once it is in", async () => {
+    mockVideo();
+    const user = userEvent.setup();
+    renderUpload();
+
+    const srt = new File(["1\n00:00:01,000 --> 00:00:02,000\nHi\n"], "Sintel (2010).en.srt", { type: "application/x-subrip" });
+    await user.upload(screen.getByLabelText("Music or video files"), [mp4(), srt]);
+
+    expect(await screen.findByText("English subtitles added", undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(subtitleUploads).toEqual([`${VIDEO_ID}:Sintel (2010).en.srt`]);
+  });
+
+  it("says when a subtitle file has no video to go with", async () => {
+    mockVideo();
+    const user = userEvent.setup();
+    renderUpload();
+
+    await user.upload(screen.getByLabelText("Music or video files"), new File(["x"], "Other.srt"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No video with this name");
+  });
+
+  it("refuses a video over 20 GB without contacting the server, and keeps 250 MB for music", async () => {
+    const { rejectionReason } = await import("./uploader");
+    expect(rejectionReason({ name: "film.mkv", size: 21 * 1024 ** 3 })).toBe("Videos can be at most 20 GB.");
+    expect(rejectionReason({ name: "film.mkv", size: 300 * 1024 ** 2 })).toBeNull();
+    expect(rejectionReason({ name: "song.flac", size: 300 * 1024 ** 2 })).toBe("Files can be at most 250 MB.");
+  });
+
+  it("skips files that are not music, video or subtitles, and says so", async () => {
+    mockVideo();
+    const user = userEvent.setup({ applyAccept: false });
+    renderUpload();
+
+    await user.upload(screen.getByLabelText("A folder of music or videos"), [mp4(), new File(["x"], "cover.jpg"), new File(["x"], "info.nfo"), new File(["x"], ".DS_Store")]);
+
+    expect(await screen.findByRole("note")).toHaveTextContent("Skipped 2 files that aren't music, video or subtitles (cover.jpg, info.nfo)");
+    expect(within(screen.getByRole("list", { name: "Uploads" })).getAllByRole("listitem")).toHaveLength(1);
+  });
+});
+
+describe("upload helpers", () => {
+  it("matches subtitle files to videos by name", async () => {
+    const { subtitleStem, videoStem } = await import("./uploader");
+    expect(subtitleStem("Sintel.2010.4K.en.srt")).toBe(videoStem("Sintel.2010.4K.mp4"));
+    expect(subtitleStem("Sintel.2010.4K.eng.forced.srt")).toBe("sintel.2010.4k");
+    expect(subtitleStem("Night Kitchen S02E05.vtt")).toBe(videoStem("Night Kitchen S02E05.mkv"));
+  });
+
+  it("formats sizes and time left", async () => {
+    const { formatBytes, timeLeft } = await import("./uploader");
+    expect(formatBytes(3.2 * 1024 ** 3)).toBe("3.2 GB");
+    expect(formatBytes(48.2 * 1024 ** 2)).toBe("48.2 MB");
+    expect(timeLeft(360 * 1024 ** 2, 1024 ** 2)).toBe("about 6 min left");
+    expect(timeLeft(10, 100)).toBe("less than a minute left");
   });
 });

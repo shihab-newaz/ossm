@@ -19,6 +19,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Format check
         run: ./gradlew spotlessCheck
+      # Video ingest runs ffprobe and ffmpeg (ADR 0009); VideoFlowTest skips without them.
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       # Testcontainers starts a real Postgres. The OpenAPI contract test fails if the running API
       # drifts from contract/openapi.yaml.
       - name: Test

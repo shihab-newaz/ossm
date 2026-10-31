@@ -40,6 +40,43 @@ final class Session {
             .build());
   }
 
+  HttpResponse<String> put(String path, String json) throws Exception {
+    return send(
+        HttpRequest.newBuilder(uri(path))
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(json))
+            .build());
+  }
+
+  HttpResponse<String> patch(String path, String json) throws Exception {
+    return send(
+        HttpRequest.newBuilder(uri(path))
+            .header("Content-Type", "application/json")
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(json))
+            .build());
+  }
+
+  /** One file in a multipart form, under the field name "file". */
+  HttpResponse<String> postMultipart(String path, String filename, byte[] content)
+      throws Exception {
+    var boundary = "ossm-" + java.util.UUID.randomUUID();
+    var head =
+        ("--%s\r\nContent-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n"
+                + "Content-Type: application/octet-stream\r\n\r\n")
+            .formatted(boundary, filename)
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    var tail = ("\r\n--" + boundary + "--\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    var body = new java.io.ByteArrayOutputStream();
+    body.write(head);
+    body.write(content);
+    body.write(tail);
+    return send(
+        HttpRequest.newBuilder(uri(path))
+            .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+            .POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()))
+            .build());
+  }
+
   /** The raw session cookie value, to replay from a different client or after a restart. */
   String sessionCookie() {
     return cookies.getCookieStore().getCookies().stream()

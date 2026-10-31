@@ -4,6 +4,7 @@ import dev.ossm.api.auth.CurrentUser;
 import dev.ossm.api.ingest.UploadDtos.CompleteUploadRequest;
 import dev.ossm.api.ingest.UploadDtos.CreateUploadRequest;
 import dev.ossm.api.ingest.UploadDtos.Upload;
+import dev.ossm.api.ingest.UploadDtos.UploadPart;
 import dev.ossm.api.ingest.UploadDtos.UploadTicket;
 import dev.ossm.api.web.Problem;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -48,7 +50,7 @@ class UploadsController {
     @ApiResponse(responseCode = "201", description = "Upload started"),
     @ApiResponse(
         responseCode = "400",
-        description = "Missing file name, or a file larger than 250 MB",
+        description = "Missing file name, or a file too large (250 MB audio, 20 GB video)",
         content =
             @Content(
                 mediaType = "application/problem+json",
@@ -77,6 +79,32 @@ class UploadsController {
     return uploads
         .find(currentUser.id(authentication), id)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such upload."));
+  }
+
+  @Operation(operationId = "listUploadParts")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Up to 200 part URLs, from part from on"),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Not found",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = Problem.class))),
+    @ApiResponse(
+        responseCode = "409",
+        description = "The upload is no longer in progress",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = Problem.class)))
+  })
+  @GetMapping("/{id}/parts")
+  List<UploadPart> parts(
+      @PathVariable UUID id,
+      @RequestParam(defaultValue = "1") int from,
+      Authentication authentication) {
+    return uploads.parts(currentUser.id(authentication), id, from);
   }
 
   @Operation(operationId = "retryUpload")
