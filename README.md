@@ -29,6 +29,8 @@ Uploads need the whole compose stack: upload URLs are signed for the address you
 
 `contract/openapi.yaml` is the source of truth. After editing it, regenerate the web client with `pnpm gen:api` (in `web/`). CI fails if the generated client is stale, or if the running backend exposes different operations than the contract.
 
+Swagger UI for the running backend is at http://localhost:8080/api/docs (the spec it loads is `/api/v3/api-docs`, also served at `/v3/api-docs`). The page is public; the calls it makes use your browser's session cookie, so sign in to the web app first (or call `POST /api/v1/auth/login` from Swagger UI) and "Try it out" acts as that user. Set `SWAGGER_UI_ENABLED=false` on the API to turn it off.
+
 ## Layout
 
 ```

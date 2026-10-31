@@ -58,6 +58,16 @@ class SecurityConfig {
                     .requestMatchers(
                         "/api/v1/health", "/v3/api-docs", "/v3/api-docs/**", "/actuator/health/**")
                     .permitAll()
+                    // The OpenAPI document and Swagger UI's static files are public. The operations
+                    // it calls are protected as usual, so "Try it out" needs a logged-in session.
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/v3/api-docs",
+                        "/api/v3/api-docs/**",
+                        "/api/v3/api-docs.yaml",
+                        "/api/docs",
+                        "/api/swagger-ui/**")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/setup")
                     .permitAll()
                     .requestMatchers(
