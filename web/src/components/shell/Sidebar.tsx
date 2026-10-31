@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AlertTriangle, Heart, History, Users } from "lucide-react";
 import { useMe } from "@/auth/session";
+import { Logo } from "@/components/Logo";
 import { isActive, navItems } from "./nav";
 
 export function Sidebar() {
@@ -11,12 +12,9 @@ export function Sidebar() {
   const isAdmin = useMe().data?.role === "ADMIN";
   return (
     <aside className="hidden w-60 shrink-0 flex-col gap-6 bg-bg-subtle p-4 lg:flex" aria-label="Sidebar">
-      <div className="flex items-center gap-3 px-2 pt-2">
-        <span aria-hidden className="grid size-8 place-items-center rounded-card bg-fg font-display font-extrabold text-bg">
-          O
-        </span>
-        <span className="font-display text-xl font-extrabold tracking-tight">OSSM</span>
-      </div>
+      <Link href="/" className="rounded-card px-2 pt-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+        <Logo />
+      </Link>
       <nav aria-label="Main">
         <ul className="flex flex-col gap-1">
           {navItems.map(({ href, label, Icon }) => {
