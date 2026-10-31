@@ -6,6 +6,7 @@ import dev.ossm.api.ingest.UploadDtos.UploadPart;
 import dev.ossm.api.ingest.UploadDtos.UploadStatus;
 import dev.ossm.api.ingest.UploadDtos.UploadTicket;
 import dev.ossm.api.storage.Bucket;
+import dev.ossm.api.web.Problem;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -61,14 +62,18 @@ class UploadService {
     this.properties = properties;
   }
 
+  /** A null kind means audio, as it did before uploads had kinds. */
   UploadTicket create(
-      UUID userId, String filename, long sizeBytes, String requestedLicense, UploadKind kind) {
+      UUID userId,
+      String filename,
+      long sizeBytes,
+      String requestedLicense,
+      UploadKind requestedKind) {
+    var kind = requestedKind == null ? UploadKind.AUDIO : requestedKind;
     if (sizeBytes > properties.maxBytes(kind)) {
       // Worded and titled like the bean-validation errors this check used to be one of.
-      var problem =
-          ProblemDetail.forStatusAndDetail(
-              HttpStatus.BAD_REQUEST, "Files can be at most " + humanSize(kind));
-      problem.setTitle("Invalid request");
+      var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, capMessage(kind));
+      problem.setTitle(Problem.INVALID_REQUEST);
       throw new ErrorResponseException(HttpStatus.BAD_REQUEST, problem, null);
     }
     if (kind == UploadKind.VIDEO) {
@@ -129,16 +134,14 @@ class UploadService {
     return new UploadTicket(find(userId, id).orElseThrow(), partSize, parts);
   }
 
-  private String tooLarge(UploadKind kind) {
-    return "Files can be at most " + humanSize(kind) + ".";
+  /** "Files can be at most 250 MB", as the create check words it. */
+  private String capMessage(UploadKind kind) {
+    return "Files can be at most " + properties.capText(kind);
   }
 
-  /** "250 MB", "20 GB". Caps are whole MB or GB in practice; anything else is shown in bytes. */
-  private String humanSize(UploadKind kind) {
-    long max = properties.maxBytes(kind);
-    long mib = 1024L * 1024;
-    long gib = 1024 * mib;
-    return max % gib == 0 ? max / gib + " GB" : max % mib == 0 ? max / mib + " MB" : max + " bytes";
+  /** The completion check's wording, which has always ended in a full stop. */
+  private String tooLarge(UploadKind kind) {
+    return capMessage(kind) + ".";
   }
 
   Upload complete(UUID userId, UUID id, CompleteUploadRequest request) {

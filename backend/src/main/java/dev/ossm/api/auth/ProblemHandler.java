@@ -1,6 +1,7 @@
 package dev.ossm.api.auth;
 
 import dev.ossm.api.users.Accounts;
+import dev.ossm.api.web.Problem;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -29,7 +30,7 @@ class ProblemHandler extends ResponseEntityExceptionHandler {
             .map(FieldError::getDefaultMessage)
             .collect(Collectors.joining(". "));
     var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
-    problem.setTitle("Invalid request");
+    problem.setTitle(Problem.INVALID_REQUEST);
     return handleExceptionInternal(exception, problem, headers, status, request);
   }
 

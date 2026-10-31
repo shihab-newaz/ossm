@@ -22,4 +22,12 @@ public record IngestProperties(
       case VIDEO -> maxVideoBytes.toBytes();
     };
   }
+
+  /** "250 MB", "20 GB". Caps are whole MB or GB in practice; anything else is shown in bytes. */
+  String capText(UploadKind kind) {
+    long max = maxBytes(kind);
+    long mb = DataSize.ofMegabytes(1).toBytes();
+    long gb = DataSize.ofGigabytes(1).toBytes();
+    return max % gb == 0 ? max / gb + " GB" : max % mb == 0 ? max / mb + " MB" : max + " bytes";
+  }
 }

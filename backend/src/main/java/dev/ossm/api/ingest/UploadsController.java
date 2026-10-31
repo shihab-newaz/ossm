@@ -62,7 +62,7 @@ class UploadsController {
         body.filename(),
         body.sizeBytes(),
         body.license(),
-        body.kind() == null ? UploadKind.AUDIO : body.kind());
+        body.kind());
   }
 
   @Operation(operationId = "getUpload")

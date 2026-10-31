@@ -17,15 +17,11 @@ final class PartSizing {
   private PartSizing() {}
 
   static long forSize(long sizeBytes) {
-    long needed = ceilDiv(sizeBytes, MAX_PARTS);
-    return Math.max(MIN_PART_SIZE, ceilDiv(needed, MIB) * MIB);
+    long needed = Math.ceilDiv(sizeBytes, MAX_PARTS);
+    return Math.max(MIN_PART_SIZE, Math.ceilDiv(needed, MIB) * MIB);
   }
 
   static int partCount(long sizeBytes) {
-    return (int) ceilDiv(sizeBytes, forSize(sizeBytes));
-  }
-
-  private static long ceilDiv(long a, long b) {
-    return (a + b - 1) / b;
+    return (int) Math.ceilDiv(sizeBytes, forSize(sizeBytes));
   }
 }

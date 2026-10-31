@@ -46,7 +46,10 @@ final class UploadDtos {
                 "CC0"
               })
           String license,
-      @Schema(description = "Defaults to AUDIO. Each kind has its own size cap.")
+      @Schema(
+              description =
+                  "Defaults to AUDIO. Each kind has its own size cap (250 MB audio, 20 GB video by"
+                      + " default).")
           UploadKind kind) {}
 
   record Upload(
