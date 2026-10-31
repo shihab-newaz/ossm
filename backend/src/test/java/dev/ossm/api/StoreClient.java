@@ -68,6 +68,50 @@ final class StoreClient {
     return "{\"parts\":[" + String.join(",", parts) + "]}";
   }
 
+  /**
+   * Streams {@code bytes} zero bytes as part 1, whatever size was declared, and returns the
+   * completion body. Presigned URLs can't enforce a size, so this is what a lying client can do.
+   */
+  static String putSinglePartOf(Started started, long bytes) throws Exception {
+    var put =
+        STORE.send(
+            HttpRequest.newBuilder(URI.create(started.partUrls().get(0)))
+                .PUT(
+                    HttpRequest.BodyPublishers.fromPublisher(
+                        HttpRequest.BodyPublishers.ofInputStream(() -> zeros(bytes)), bytes))
+                .build(),
+            HttpResponse.BodyHandlers.discarding());
+    assertThat(put.statusCode()).as("oversized part").isEqualTo(200);
+    var etag = put.headers().firstValue("ETag").orElseThrow();
+    return "{\"parts\":[{\"partNumber\":1,\"etag\":%s}]}".formatted(quote(etag));
+  }
+
+  private static java.io.InputStream zeros(long length) {
+    return new java.io.InputStream() {
+      private long left = length;
+
+      @Override
+      public int read() {
+        if (left <= 0) {
+          return -1;
+        }
+        left--;
+        return 0;
+      }
+
+      @Override
+      public int read(byte[] buffer, int offset, int len) {
+        if (left <= 0) {
+          return -1;
+        }
+        int n = (int) Math.min(len, left);
+        java.util.Arrays.fill(buffer, offset, offset + n, (byte) 0);
+        left -= n;
+        return n;
+      }
+    };
+  }
+
   /** A whole upload: start, send, complete. Returns the upload id. */
   static String upload(Session session, String filename, byte[] file) throws Exception {
     return upload(session, filename, file, null);

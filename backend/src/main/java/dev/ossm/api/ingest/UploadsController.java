@@ -48,7 +48,7 @@ class UploadsController {
     @ApiResponse(responseCode = "201", description = "Upload started"),
     @ApiResponse(
         responseCode = "400",
-        description = "Missing file name, or a file larger than 250 MB",
+        description = "Missing file name, a file over its kind's size cap, or an unknown kind",
         content =
             @Content(
                 mediaType = "application/problem+json",
@@ -58,7 +58,11 @@ class UploadsController {
   @ResponseStatus(HttpStatus.CREATED)
   UploadTicket create(@Valid @RequestBody CreateUploadRequest body, Authentication authentication) {
     return uploads.create(
-        currentUser.id(authentication), body.filename(), body.sizeBytes(), body.license());
+        currentUser.id(authentication),
+        body.filename(),
+        body.sizeBytes(),
+        body.license(),
+        body.kind() == null ? UploadKind.AUDIO : body.kind());
   }
 
   @Operation(operationId = "getUpload")

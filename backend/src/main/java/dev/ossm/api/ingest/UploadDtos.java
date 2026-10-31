@@ -2,7 +2,6 @@ package dev.ossm.api.ingest;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -14,8 +13,6 @@ import java.util.UUID;
 
 /** Wire types for uploads. Names become schema names in contract/openapi.yaml. */
 final class UploadDtos {
-
-  static final long MAX_BYTES = 250L * 1024 * 1024;
 
   private UploadDtos() {}
 
@@ -35,7 +32,6 @@ final class UploadDtos {
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
           @NotNull(message = "File size is missing")
           @Min(value = 1, message = "That file is empty")
-          @Max(value = MAX_BYTES, message = "Files can be at most 250 MB")
           Long sizeBytes,
       @Schema(
               description = "Defaults to All rights reserved",
@@ -49,7 +45,9 @@ final class UploadDtos {
                 "CC BY-NC-ND",
                 "CC0"
               })
-          String license) {}
+          String license,
+      @Schema(description = "Defaults to AUDIO. Each kind has its own size cap.")
+          UploadKind kind) {}
 
   record Upload(
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID id,

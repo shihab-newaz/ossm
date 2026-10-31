@@ -325,7 +325,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/UploadTicket"
         "400":
-          description: Missing file name, or a file larger than 250 MB
+          description: Missing file name, a file over its kind's size cap, or an unknown kind
           content:
             application/problem+json:
               schema:
@@ -921,11 +921,14 @@ components:
           type: integer
           format: int64
           minimum: 1
-          maximum: 262144000
         license:
           type: string
           description: Defaults to All rights reserved
           enum: [All rights reserved, CC BY, CC BY-SA, CC BY-NC, CC BY-ND, CC BY-NC-SA, CC BY-NC-ND, CC0]
+        kind:
+          type: string
+          description: Defaults to AUDIO. Each kind has its own size cap (250 MB audio, 20 GB video by default).
+          enum: [AUDIO, VIDEO]
     UploadPart:
       type: object
       required: [partNumber, url]

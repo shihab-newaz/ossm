@@ -35,9 +35,6 @@ import software.amazon.awssdk.services.s3.presigner.model.UploadPartPresignReque
 @Service
 class UploadService {
 
-  /** S3 needs at least 5 MiB per part except the last. */
-  static final long PART_SIZE = 16L * 1024 * 1024;
-
   private static final Duration URL_LIFETIME = Duration.ofHours(1);
 
   private final JdbcClient jdbc;
@@ -45,17 +42,32 @@ class UploadService {
   private final S3Presigner presigner;
   private final Bucket bucket;
   private final IngestQueue queue;
+  private final IngestProperties properties;
 
   UploadService(
-      JdbcClient jdbc, S3Client s3, S3Presigner presigner, Bucket bucket, IngestQueue queue) {
+      JdbcClient jdbc,
+      S3Client s3,
+      S3Presigner presigner,
+      Bucket bucket,
+      IngestQueue queue,
+      IngestProperties properties) {
     this.jdbc = jdbc;
     this.s3 = s3;
     this.presigner = presigner;
     this.bucket = bucket;
     this.queue = queue;
+    this.properties = properties;
   }
 
-  UploadTicket create(UUID userId, String filename, long sizeBytes, String requestedLicense) {
+  UploadTicket create(
+      UUID userId, String filename, long sizeBytes, String requestedLicense, UploadKind kind) {
+    if (sizeBytes > properties.maxBytes(kind)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, tooLarge(kind));
+    }
+    if (kind == UploadKind.VIDEO) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Video uploads aren't available yet.");
+    }
     final String license;
     try {
       license = Licenses.resolve(requestedLicense);
@@ -84,7 +96,8 @@ class UploadService {
         .param("license", license)
         .update();
 
-    int count = (int) ((sizeBytes + PART_SIZE - 1) / PART_SIZE);
+    long partSize = PartSizing.forSize(sizeBytes);
+    int count = PartSizing.partCount(sizeBytes);
     List<UploadPart> parts =
         IntStream.rangeClosed(1, count)
             .mapToObj(
@@ -106,7 +119,17 @@ class UploadService {
                             .url()
                             .toString()))
             .toList();
-    return new UploadTicket(find(userId, id).orElseThrow(), PART_SIZE, parts);
+    return new UploadTicket(find(userId, id).orElseThrow(), partSize, parts);
+  }
+
+  /** "Files can be at most 250 MB." Caps are whole MB or GB in practice; anything else in bytes. */
+  private String tooLarge(UploadKind kind) {
+    long max = properties.maxBytes(kind);
+    long mib = 1024L * 1024;
+    long gib = 1024 * mib;
+    String size =
+        max % gib == 0 ? max / gib + " GB" : max % mib == 0 ? max / mib + " MB" : max + " bytes";
+    return "Files can be at most " + size + ".";
   }
 
   Upload complete(UUID userId, UUID id, CompleteUploadRequest request) {
@@ -149,14 +172,15 @@ class UploadService {
 
     // The size was declared up front, but presigned URLs cannot enforce it, so check what arrived.
     var stored = s3.headObject(b -> b.bucket(bucketName).key(key)).contentLength();
-    if (stored > UploadDtos.MAX_BYTES) {
+    // Every upload is audio until video ingest exists (ticket 20 records the kind on the row).
+    if (stored > properties.maxBytes(UploadKind.AUDIO)) {
       s3.deleteObject(b -> b.bucket(bucketName).key(key));
       jdbc.sql(
               "update upload set status = 'FAILED', error = :error, updated_at = now() where id = :id")
-          .param("error", "Files can be at most 250 MB.")
+          .param("error", tooLarge(UploadKind.AUDIO))
           .param("id", id)
           .update();
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Files can be at most 250 MB.");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, tooLarge(UploadKind.AUDIO));
     }
 
     // Queue first, then flip the status: a job that wins the race must not be overwritten.

@@ -677,6 +677,11 @@ export interface components {
              * @enum {string}
              */
             license?: "All rights reserved" | "CC BY" | "CC BY-SA" | "CC BY-NC" | "CC BY-ND" | "CC BY-NC-SA" | "CC BY-NC-ND" | "CC0";
+            /**
+             * @description Defaults to AUDIO. Each kind has its own size cap (250 MB audio, 20 GB video by default).
+             * @enum {string}
+             */
+            kind?: "AUDIO" | "VIDEO";
         };
         UploadPart: {
             partNumber: number;
@@ -1430,7 +1435,7 @@ export interface operations {
                     "application/json": components["schemas"]["UploadTicket"];
                 };
             };
-            /** @description Missing file name, or a file larger than 250 MB */
+            /** @description Missing file name, a file over its kind's size cap, or an unknown kind */
             400: {
                 headers: {
                     [name: string]: unknown;

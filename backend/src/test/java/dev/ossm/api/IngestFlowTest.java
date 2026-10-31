@@ -215,6 +215,78 @@ class IngestFlowTest {
   }
 
   @Test
+  void eachKindHasItsOwnSizeCap() throws Exception {
+    var user = loggedInAdmin();
+
+    var bigAudio =
+        user.post(
+            "/api/v1/uploads",
+            "{\"filename\":\"big.mp3\",\"sizeBytes\":262144001,\"kind\":\"AUDIO\"}");
+    var bigVideo =
+        user.post(
+            "/api/v1/uploads",
+            "{\"filename\":\"long.mkv\",\"sizeBytes\":21474836481,\"kind\":\"VIDEO\"}");
+
+    assertThat(bigAudio.statusCode()).isEqualTo(400);
+    assertThat(bigAudio.body()).contains("at most 250 MB");
+    assertThat(bigVideo.statusCode()).isEqualTo(400);
+    assertThat(bigVideo.body()).contains("at most 20 GB");
+    assertThat(jdbc.queryForObject("select count(*) from upload", Integer.class)).isZero();
+  }
+
+  @Test
+  void aVideoWithinItsCapIsRefusedUntilVideoIngestExists() throws Exception {
+    var user = loggedInAdmin();
+
+    var video =
+        user.post(
+            "/api/v1/uploads",
+            "{\"filename\":\"clip.mp4\",\"sizeBytes\":1073741824,\"kind\":\"VIDEO\"}");
+
+    assertThat(video.statusCode()).isEqualTo(400);
+    assertThat(video.body()).contains("Video uploads aren't available yet");
+    assertThat(jdbc.queryForObject("select count(*) from upload", Integer.class)).isZero();
+  }
+
+  @Test
+  void anUnknownKindIsRejected() throws Exception {
+    var user = loggedInAdmin();
+
+    var odd =
+        user.post(
+            "/api/v1/uploads", "{\"filename\":\"x.mp3\",\"sizeBytes\":10,\"kind\":\"PODCAST\"}");
+
+    assertThat(odd.statusCode()).isEqualTo(400);
+    assertThat(jdbc.queryForObject("select count(*) from upload", Integer.class)).isZero();
+  }
+
+  @Test
+  void aLargeAudioFileIsCutIntoSixteenMibParts() throws Exception {
+    var user = loggedInAdmin();
+
+    var started = StoreClient.start(user, "long.flac", 200L * 1024 * 1024);
+
+    assertThat(started.partSize()).isEqualTo(16L * 1024 * 1024);
+    assertThat(started.partUrls()).hasSize(13);
+  }
+
+  @Test
+  void aFileLargerThanDeclaredIsCaughtWhenTheUploadCompletes() throws Exception {
+    var user = loggedInAdmin();
+    var started = StoreClient.start(user, "liar.mp3", 1);
+
+    var complete =
+        user.post(
+            "/api/v1/uploads/" + started.uploadId() + "/complete",
+            StoreClient.putSinglePartOf(started, 250L * 1024 * 1024 + 1));
+
+    assertThat(complete.statusCode()).isEqualTo(400);
+    assertThat(complete.body()).contains("at most 250 MB");
+    assertThat(user.get("/api/v1/uploads/" + started.uploadId()).body())
+        .contains("\"status\":\"FAILED\"");
+  }
+
+  @Test
   void completingTwiceOrWithBadPartsIsRejected() throws Exception {
     var user = loggedInAdmin();
     var mp3 = Mp3Fixture.mp3(Tags.none());
