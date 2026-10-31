@@ -1,0 +1,5 @@
+# Local only: exposes Postgres to the host for DB tools like DBeaver.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
