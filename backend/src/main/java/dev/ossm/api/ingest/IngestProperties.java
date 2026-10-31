@@ -11,10 +11,22 @@ import org.springframework.util.unit.DataSize;
  */
 @ConfigurationProperties("ossm.ingest")
 public record IngestProperties(
-    @DefaultValue("true") boolean enabled,
-    @DefaultValue("15s") Duration heartbeatInterval,
+    boolean enabled,
+    Duration heartbeatInterval,
     @DefaultValue("250MB") DataSize maxAudioBytes,
     @DefaultValue("20GB") DataSize maxVideoBytes) {
+
+  /** A cap of zero or less would refuse every upload, so it stops startup instead. */
+  public IngestProperties {
+    requirePositive("ossm.ingest.max-audio-bytes", maxAudioBytes);
+    requirePositive("ossm.ingest.max-video-bytes", maxVideoBytes);
+  }
+
+  private static void requirePositive(String property, DataSize cap) {
+    if (cap.toBytes() <= 0) {
+      throw new IllegalArgumentException(property + " must be more than 0, but was " + cap);
+    }
+  }
 
   long maxBytes(UploadKind kind) {
     return switch (kind) {
