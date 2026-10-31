@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { PlaybackEvents } from "@/events/PlaybackEvents";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { Shortcuts } from "@/player/Shortcuts";
+import { SearchPalette } from "@/search/SearchPalette";
 import { PlayerBar } from "./PlayerBar";
 import { Sidebar } from "./Sidebar";
 import { TabBar } from "./TabBar";
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <TabBar />
       <ToastHost />
       <Shortcuts />
+      <SearchPalette />
       <PlaybackEvents />
     </div>
   );

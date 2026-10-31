@@ -2,7 +2,7 @@
 
 **Parent:** docs/specs/01-phase-1-core-app.md (UI details: docs/specs/02-phase-1-web-ui.md)
 **Status:** ready-for-agent
-**Blocked by:** 11 (Explore page), 13 (Favorites and History), 14 (Playlists), 15 (Mobile experience)
+**Blocked by:** 11 (Explore page), 13 (Favorites and History), 14 (Playlists). Ticket 15 (Mobile experience) is deferred, so the pass covers desktop only until it is picked up.
 
 ## What to build
 

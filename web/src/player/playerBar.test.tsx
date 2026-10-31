@@ -133,7 +133,7 @@ describe("playing from the library", () => {
 
 describe("the player bar", () => {
   it("says nothing is playing, with the controls off, until a track is chosen", () => {
-    render(<PlayerBar />);
+    render(<Providers><PlayerBar /></Providers>);
 
     expect(screen.getByText("Nothing playing")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Play" })).toBeDisabled();
@@ -142,7 +142,7 @@ describe("the player bar", () => {
 
   it("seeks with the slider and reads out the position", async () => {
     await act(() => player.play(track("t1", "Midnight City")));
-    render(<PlayerBar />);
+    render(<Providers><PlayerBar /></Providers>);
 
     fireEvent.change(screen.getByRole("slider", { name: "Seek" }), { target: { value: "120" } });
 
@@ -153,7 +153,7 @@ describe("the player bar", () => {
 
   it("changes the volume and mutes", async () => {
     await act(() => player.play(track("t1", "Midnight City")));
-    render(<PlayerBar />);
+    render(<Providers><PlayerBar /></Providers>);
 
     fireEvent.change(screen.getByRole("slider", { name: "Volume" }), { target: { value: "0.4" } });
     expect(player.getState().volume).toBe(0.4);

@@ -4,6 +4,7 @@ import { ListEnd, ListPlus, Music, Play } from "lucide-react";
 import Link from "next/link";
 import type { components } from "@/api/schema";
 import { Equalizer } from "@/components/ui/Equalizer";
+import { LikeButton } from "@/favorites/LikeButton";
 import { toast } from "@/components/ui/toast";
 import { player, usePlayer } from "@/player/player";
 import { QualityBadge } from "./QualityBadge";
@@ -23,10 +24,12 @@ type Props = {
   number?: number;
   /** Show the album and the quality badge columns (wide screens only). */
   details?: boolean;
+  /** A short note after the title block, such as when it was played. */
+  meta?: string;
 };
 
 /** One 56px row in a track list: play, what it is, row actions and its length. */
-export function TrackRow({ track, onPlay, number, details = false }: Props) {
+export function TrackRow({ track, onPlay, number, details = false, meta }: Props) {
   const { track: current, status } = usePlayer();
   const isCurrent = current?.id === track.id;
   const playing = isCurrent && (status === "playing" || status === "loading");
@@ -90,6 +93,8 @@ export function TrackRow({ track, onPlay, number, details = false }: Props) {
           </span>
         </>
       ) : null}
+      {meta ? <span className="hidden w-36 shrink-0 truncate text-[13px] text-fg-muted sm:block">{meta}</span> : null}
+      <LikeButton track={track} revealOnHover />
       <div className="flex shrink-0 items-center md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
         <button
           onClick={() => {

@@ -1,7 +1,7 @@
 # 18: Playwright smoke test (optional)
 
 **Parent:** docs/specs/01-phase-1-core-app.md
-**Status:** ready-for-agent
+**Status:** deferred (set aside on 2026-10-10 by the owner; it was optional for Phase 1)
 **Blocked by:** 08 (Queue and full player)
 
 ## What to build

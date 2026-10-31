@@ -275,4 +275,46 @@ class PlaybackEventsTest {
     assertThat(titles(admin.get("/api/v1/history?limit=0").body())).hasSize(1);
     assertThat(titles(admin.get("/api/v1/history?limit=99999").body())).hasSize(3);
   }
+
+  @Test
+  void historyPagesTileTheListWithTheTotalOfYourPlaysAlone() throws Exception {
+    var admin = admin();
+    var grace = member(admin, "grace");
+    var t0 = Instant.parse("2026-03-04T10:00:00Z");
+    for (int i = 1; i <= 5; i++) {
+      send(admin, track("Play " + i), "play_completed", 30_000, t0.plusSeconds(i * 60L));
+    }
+    send(grace, track("Graces"), "play_completed", 30_000, t0.plusSeconds(1000));
+
+    var all = new java.util.ArrayList<String>();
+    for (int offset = 0; offset < 5; offset += 2) {
+      var page = admin.get("/api/v1/history?limit=2&offset=" + offset);
+      assertThat(page.statusCode()).isEqualTo(200);
+      assertThat(page.headers().firstValue("X-Total-Count")).contains("5");
+      all.addAll(titles(page.body()));
+    }
+
+    assertThat(all).containsExactly("Play 5", "Play 4", "Play 3", "Play 2", "Play 1");
+    assertThat(admin.get("/api/v1/history?offset=-1").statusCode()).isEqualTo(400);
+  }
+
+  @Test
+  void aListenReportedTwiceAppearsOnceInHistory() throws Exception {
+    var admin = admin();
+    var track = track("Once");
+    var body =
+        event(
+            UUID.randomUUID(),
+            track,
+            "play_completed",
+            30_000,
+            Instant.parse("2026-03-04T10:00:00Z"));
+
+    assertThat(admin.post(EVENTS, body).statusCode()).isEqualTo(202);
+    assertThat(admin.post(EVENTS, body).statusCode()).isEqualTo(202);
+
+    assertThat(titles(admin.get("/api/v1/history").body())).containsExactly("Once");
+    assertThat(admin.get("/api/v1/history").headers().firstValue("X-Total-Count")).contains("1");
+    assertThat(admin.get("/api/v1/history/most-played").body()).contains("\"plays\":1");
+  }
 }
