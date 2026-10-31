@@ -30,6 +30,6 @@ class PartSizingTest {
   @Test
   void oneByteMoreGrowsThePartToTheNextWholeMib() {
     assertThat(PartSizing.forSize(16 * MIB * 10_000 + 1)).isEqualTo(17 * MIB);
-    assertThat(PartSizing.partCount(16 * MIB * 10_000 + 1)).isLessThanOrEqualTo(10_000);
+    assertThat(PartSizing.partCount(16 * MIB * 10_000 + 1)).isEqualTo(9_412);
   }
 }
