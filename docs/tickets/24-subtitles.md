@@ -19,3 +19,5 @@
 - [ ] Subtitle endpoints require a session.
 
 ## Comments
+
+- 2026-10-31, web: the subtitles menu (languages, Off, remembered language) and "Add subtitle file…" (multipart POST) are built against the contract.

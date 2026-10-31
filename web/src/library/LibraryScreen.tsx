@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Disc3, Mic2, Play, Shuffle, X } from "lucide-react";
+import { Clapperboard, Disc3, Mic2, Play, Shuffle, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "@/components/ui/toast";
@@ -60,7 +60,14 @@ export function LibraryScreen() {
 
   return (
     <div className="flex flex-col gap-6 py-8">
-      <h1 className="font-display text-[28px] font-extrabold leading-[34px] tracking-[-0.015em] md:text-4xl md:leading-[42px]">Library</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-display text-[28px] font-extrabold leading-[34px] tracking-[-0.015em] md:text-4xl md:leading-[42px]">Library</h1>
+        {/* Phones have no sidebar, so Videos is reached from here. */}
+        <Link href="/videos" className="flex h-10 items-center gap-2 rounded-full border border-border-strong px-4 text-[15px] font-semibold hover:bg-surface-hover lg:hidden">
+          <Clapperboard size={18} aria-hidden />
+          Videos
+        </Link>
+      </div>
       <div role="tablist" aria-label="Library sections" className="flex gap-2">
         {TABS.map((t) => (
           <button

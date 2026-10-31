@@ -11,4 +11,7 @@ export const handlers = [
   http.get("*/api/v1/health", () => HttpResponse.json({ status: "UP", database: "UP" })),
   http.get("*/api/v1/setup", () => HttpResponse.json({ setupRequired: false })),
   http.get("*/api/v1/auth/me", () => problem(401, "Unauthorized", "You are not logged in.")),
+  // An instance with no videos: screens that show video rows next to music hide them.
+  http.get("*/api/v1/videos/recent", () => HttpResponse.json([])),
+  http.get("*/api/v1/videos/continue-watching", () => HttpResponse.json([])),
 ];

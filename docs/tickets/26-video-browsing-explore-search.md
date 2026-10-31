@@ -18,3 +18,5 @@
 - [ ] Lists stay smooth with a few thousand videos (paging test).
 
 ## Comments
+
+- 2026-10-31, web: the sidebar Videos item (mobile reaches it from Library), the virtualized Movies and Shows grids, and the Explore "Continue watching" and "Recently added videos" rows are built. Not done: search.

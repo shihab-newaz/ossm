@@ -21,3 +21,5 @@
 - [ ] Reports are throttled (UI test with fake timers).
 
 ## Comments
+
+- 2026-10-31, web: resume with "Start over", the watched threshold (`web/src/video/progress.ts`), throttled progress reports (15 s, on pause, after a seek, keepalive on pagehide) and progress bars and watched checks on thumbnails are built. Still to decide: whether video emits play events (ADR 0008 addendum).

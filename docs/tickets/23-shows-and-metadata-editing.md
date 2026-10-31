@@ -19,3 +19,5 @@
 - [ ] Next episode starts the following episode, crossing into the next season.
 
 ## Comments
+
+- 2026-10-31, web: the Shows tab, show page (season tabs, resume) and the Edit details dialog (PATCH) are built. The next-episode card with its 10 s countdown is built too. The show picker uses the browser's suggestion list rather than the custom dropdown in the design.

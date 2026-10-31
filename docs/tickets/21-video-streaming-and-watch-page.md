@@ -21,3 +21,5 @@
 - [ ] Keyboard shortcuts work and are listed in the help dialog.
 
 ## Comments
+
+- 2026-10-31, web: the watch page, video engine (`web/src/video/engine.ts`, fake-element tests), controls, keyboard shortcuts (listed in the ? dialog) and music pausing are built. The page is forced dark while open. Not done: Media Session for video, and a real-browser check.

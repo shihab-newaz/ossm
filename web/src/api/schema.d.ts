@@ -580,6 +580,215 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/videos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Videos in the shared library
+         * @description Movies or episodes, by kind. Everything unless limit and offset are given. Sorted by sort (added, newest first; title; or year, newest first) with a stable tie-break. The total is in X-Total-Count.
+         */
+        get: operations["listVideos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/recent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The newest movies and episodes, newest first */
+        get: operations["listRecentVideos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/continue-watching": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your videos in progress, most recently watched first
+         * @description Watched videos are left out, and a show appears once, as its latest episode.
+         */
+        get: operations["listContinueWatching"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A video, its subtitles and what to watch next */
+        get: operations["getVideo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Correct a video's details
+         * @description Only the uploader and admins. Turning a video into an episode files it under the named show, creating the show if there is none by that name; a show left with no episodes is removed.
+         */
+        patch: operations["updateVideo"];
+        trace?: never;
+    };
+    "/api/v1/videos/{id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The video file, as stored (direct play, no transcoding)
+         * @description Same rules as the track stream (ADR 0006), including a single byte range.
+         */
+        get: operations["streamVideo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/{id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The frame taken from the video at ingest */
+        get: operations["getVideoThumbnail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/{id}/subtitles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Attach a subtitle file (.srt or .vtt) to a video
+         * @description SRT is converted to WebVTT. At most 2 MB.
+         */
+        post: operations["addSubtitle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/{id}/subtitles/{index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One subtitle track as WebVTT */
+        get: operations["getSubtitle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/{id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Remember where you are in a video
+         * @description Last write wins. The video counts as watched once 90% of it or all but the last 2 minutes have been reached.
+         */
+        put: operations["saveWatchProgress"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shows in the shared library
+         * @description Everything unless limit and offset are given. Sorted by sort (added: newest episode first; title; or year) with a stable tie-break. The total is in X-Total-Count.
+         */
+        get: operations["listShows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shows/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A show and its episodes by season */
+        get: operations["getShow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -823,6 +1032,112 @@ export interface components {
             /** @enum {string} */
             database: "UP" | "DOWN";
         };
+        Video: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "MOVIE" | "EPISODE";
+            /** @description The movie's title, or the episode's own title (the filename when it has none) */
+            title: string;
+            year?: number;
+            description?: string;
+            /**
+             * Format: uuid
+             * @description Episodes only
+             */
+            showId?: string;
+            /** @description Episodes only */
+            showName?: string;
+            /** @description Episodes only */
+            season?: number;
+            /** @description Episodes only */
+            episode?: number;
+            /** Format: int64 */
+            durationMs: number;
+            width?: number;
+            height?: number;
+            /** @description As ffprobe names it, e.g. h264, hevc, av1, vp9 */
+            videoCodec?: string;
+            audioCodec?: string;
+            /** @description mp4, mov, webm or mkv */
+            container?: string;
+            bitrateKbps?: number;
+            /** @description False when the browser may not be able to play the file as stored */
+            playable: boolean;
+            /** @description Same-origin path to the thumbnail, when it has one */
+            thumbnailUrl?: string;
+            /** @enum {string} */
+            license: "All rights reserved" | "CC BY" | "CC BY-SA" | "CC BY-NC" | "CC BY-ND" | "CC BY-NC-SA" | "CC BY-NC-ND" | "CC0";
+            /** @description Username of who uploaded it */
+            uploadedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            progress?: components["schemas"]["WatchProgress"];
+        };
+        VideoDetail: {
+            video: components["schemas"]["Video"];
+            subtitles: components["schemas"]["Subtitle"][];
+            /** @description For an episode, the rest of its season and then the next season, in order. For a movie, other movies, newest first. */
+            upNext: components["schemas"]["Video"][];
+            /** @description Whether you may change its details (you uploaded it, or you are an admin) */
+            canEdit: boolean;
+        };
+        VideoUpdate: {
+            /** @enum {string} */
+            kind: "MOVIE" | "EPISODE";
+            title: string;
+            year?: number;
+            /** @description Required for an episode */
+            showName?: string;
+            season?: number;
+            episode?: number;
+        };
+        Subtitle: {
+            index: number;
+            /** @description A language tag such as en, when known */
+            language?: string;
+            /** @description What the subtitles menu shows, e.g. English */
+            label: string;
+            /** @description Same-origin path to the WebVTT file */
+            url: string;
+        };
+        WatchProgress: {
+            /** Format: int64 */
+            positionMs: number;
+            /** Format: int64 */
+            durationMs: number;
+            watched: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WatchProgressRequest: {
+            /** Format: int64 */
+            positionMs: number;
+            /** Format: int64 */
+            durationMs: number;
+        };
+        Show: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            seasonCount: number;
+            episodeCount: number;
+            /** @description The latest episode's thumbnail, when it has one */
+            thumbnailUrl?: string;
+            progress?: components["schemas"]["WatchProgress"];
+        };
+        ShowDetail: {
+            show: components["schemas"]["Show"];
+            /** @description Who uploaded the first episode */
+            uploadedBy: string;
+            seasons: components["schemas"]["Season"][];
+            resume?: components["schemas"]["Video"];
+        };
+        Season: {
+            number: number;
+            /** @description In episode order */
+            episodes: components["schemas"]["Video"][];
+        };
     };
     responses: never;
     parameters: {
@@ -834,6 +1149,7 @@ export interface components {
         UploadId: string;
         UserId: string;
         InviteToken: string;
+        VideoId: string;
     };
     requestBodies: never;
     headers: {
@@ -1864,6 +2180,426 @@ export interface operations {
                 };
             };
             /** @description No such album or no cover */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listVideos: {
+        parameters: {
+            query?: {
+                /** @description Page size, 1 to 1000. Leave out (with offset) for everything. */
+                limit?: components["parameters"]["PageLimit"];
+                offset?: components["parameters"]["PageOffset"];
+                kind?: "MOVIE" | "EPISODE";
+                sort?: "added" | "title" | "year";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Videos */
+            200: {
+                headers: {
+                    "X-Total-Count": components["headers"]["TotalCount"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Video"][];
+                };
+            };
+        };
+    };
+    listRecentVideos: {
+        parameters: {
+            query?: {
+                /** @description How many to return (default 50, at most 200) */
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Videos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Video"][];
+                };
+            };
+        };
+    };
+    listContinueWatching: {
+        parameters: {
+            query?: {
+                /** @description How many to return (default 50, at most 200) */
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Videos with your progress */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Video"][];
+                };
+            };
+        };
+    };
+    getVideo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["VideoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The video */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VideoDetail"];
+                };
+            };
+            /** @description No such video */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateVideo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["VideoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VideoUpdate"];
+            };
+        };
+        responses: {
+            /** @description The updated video */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Video"];
+                };
+            };
+            /** @description Invalid details (an episode needs a show, season and episode number) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description You did not upload this video and are not an admin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such video */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    streamVideo: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @example bytes=0-1023 */
+                Range?: string;
+            };
+            path: {
+                id: components["parameters"]["VideoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The whole file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/*": string;
+                };
+            };
+            /** @description The requested byte range */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/*": string;
+                };
+            };
+            /** @description No such video, or its file is missing from storage */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The range starts beyond the end of the file */
+            416: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getVideoThumbnail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["VideoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/*": string;
+                };
+            };
+            /** @description No such video or no thumbnail */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    addSubtitle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["VideoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    /** @description A language tag such as en; guessed from the filename when left out */
+                    language?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The subtitle track */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subtitle"];
+                };
+            };
+            /** @description Not a subtitle file, or too large */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such video */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getSubtitle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["VideoId"];
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The subtitles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/vtt": string;
+                };
+            };
+            /** @description No such video or subtitle track */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    saveWatchProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["VideoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchProgressRequest"];
+            };
+        };
+        responses: {
+            /** @description Your progress */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchProgress"];
+                };
+            };
+            /** @description Invalid position */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such video */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listShows: {
+        parameters: {
+            query?: {
+                /** @description Page size, 1 to 1000. Leave out (with offset) for everything. */
+                limit?: components["parameters"]["PageLimit"];
+                offset?: components["parameters"]["PageOffset"];
+                sort?: "added" | "title" | "year";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shows */
+            200: {
+                headers: {
+                    "X-Total-Count": components["headers"]["TotalCount"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Show"][];
+                };
+            };
+        };
+    };
+    getShow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The show */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShowDetail"];
+                };
+            };
+            /** @description No such show */
             404: {
                 headers: {
                     [name: string]: unknown;

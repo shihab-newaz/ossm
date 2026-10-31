@@ -34,14 +34,16 @@ Spec: `docs/specs/03-video-library.md`. Started 2026-10-30 and runs alongside th
 | # | Ticket | Status |
 | --- | --- | --- |
 | 19 | Video spike | next |
-| 20 | Video upload and ingest (MP4 happy path) | ready |
-| 21 | Stream and watch a video | ready |
-| 22 | Video ingest hardening | ready |
-| 23 | Shows and metadata editing | ready |
-| 24 | Subtitles | ready |
-| 25 | Watch progress and Continue watching | ready |
-| 26 | Videos in navigation, Explore and search | ready |
+| 20 | Video upload and ingest (MP4 happy path) | ready (web grid done; upload screen not) |
+| 21 | Stream and watch a video | web done |
+| 22 | Video ingest hardening | ready (web badge done) |
+| 23 | Shows and metadata editing | web done |
+| 24 | Subtitles | web done |
+| 25 | Watch progress and Continue watching | web done |
+| 26 | Videos in navigation, Explore and search | web done except search |
 | 27 | Video on mobile and polish | ready |
+
+"web done" means the screens are built from the Claude Design mockups and tested against MSW, against the planned video contract. No backend serves them yet. Contract operations for video carry `x-ossm-planned: true`, which the backend's contract test skips. Each backend ticket removes the marker for what it serves.
 
 ## What works today
 

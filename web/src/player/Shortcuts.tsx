@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { player } from "./player";
+import { VIDEO_SHORTCUTS } from "@/video/keymap";
 import { handleShortcut, SHORTCUTS } from "./keymap";
 
 /** Listens for the player's keyboard shortcuts, and shows the "?" help dialog. Renders nothing otherwise. */
@@ -26,20 +27,28 @@ export function Shortcuts() {
 
   return (
     <Modal open={helpOpen} onClose={() => setHelpOpen(false)} title="Keyboard shortcuts" variant="dialog">
-      <dl className="flex flex-col gap-3">
-        {SHORTCUTS.map(({ keys, action }) => (
-          <div key={action} className="flex items-center justify-between gap-4">
-            <dt className="text-fg-muted">{action}</dt>
-            <dd className="flex gap-1">
-              {keys.map((key) => (
-                <kbd key={key} className="min-w-7 rounded-md border border-border-strong bg-bg-subtle px-2 py-0.5 text-center font-mono text-[12px] font-medium">
-                  {key}
-                </kbd>
-              ))}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <ShortcutList shortcuts={SHORTCUTS} />
+      <h3 className="pt-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-fg-subtle">Video</h3>
+      <ShortcutList shortcuts={VIDEO_SHORTCUTS} />
     </Modal>
+  );
+}
+
+function ShortcutList({ shortcuts }: { shortcuts: { keys: string[]; action: string }[] }) {
+  return (
+    <dl className="flex flex-col gap-3">
+      {shortcuts.map(({ keys, action }) => (
+        <div key={keys.join("+")} className="flex items-center justify-between gap-4">
+          <dt className="text-fg-muted">{action}</dt>
+          <dd className="flex gap-1">
+            {keys.map((key) => (
+              <kbd key={key} className="min-w-7 rounded-md border border-border-strong bg-bg-subtle px-2 py-0.5 text-center font-mono text-[12px] font-medium">
+                {key}
+              </kbd>
+            ))}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }

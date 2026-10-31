@@ -7,7 +7,7 @@ import { useRef, useId, type ReactNode } from "react";
  * A row of cards that scrolls sideways and snaps to a card. Arrow buttons appear on wide screens;
  * touch and trackpads just swipe. Every card stays reachable by keyboard.
  */
-export function Carousel({ title, items }: { title: string; items: ReactNode[] }) {
+export function Carousel({ title, items, wide = false }: { title: string; items: ReactNode[]; /** 16:9 video cards rather than square covers. */ wide?: boolean }) {
   const scroller = useRef<HTMLDivElement>(null);
   const headingId = useId();
 
@@ -35,10 +35,10 @@ export function Carousel({ title, items }: { title: string; items: ReactNode[] }
         ref={scroller}
         role="list"
         aria-label={title}
-        className="-mx-2 flex snap-x snap-mandatory gap-2 overflow-x-auto px-2 pb-2 motion-safe:scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={`-mx-2 flex snap-x snap-mandatory overflow-x-auto px-2 pb-2 ${wide ? "gap-3 pt-2 lg:gap-6" : "gap-2"} motion-safe:scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
       >
         {items.map((item, i) => (
-          <div key={i} role="listitem" className="w-40 shrink-0 snap-start sm:w-44">
+          <div key={i} role="listitem" className={`shrink-0 snap-start ${wide ? "w-[72vw] sm:w-[248px] xl:w-[280px]" : "w-40 sm:w-44"}`}>
             {item}
           </div>
         ))}

@@ -18,6 +18,10 @@ import tools.jackson.databind.ObjectMapper;
  * The committed contract (contract/openapi.yaml) is the source of truth. This fails when the
  * running API gains, loses or renames an operation, changes its response codes, or changes the
  * properties of a schema, without the contract being updated.
+ *
+ * <p>Operations and schemas marked {@code x-ossm-planned: true} in the contract are left out: the
+ * web UI builds against them before the backend serves them. The ticket that implements one removes
+ * its marker, and from then on it is checked like everything else.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestInfrastructure.class)
@@ -41,7 +45,30 @@ class OpenApiContractTest {
   }
 
   private Map<String, Object> committedContract() throws Exception {
-    return new Yaml().load(Files.readString(CONTRACT));
+    return withoutPlanned(new Yaml().load(Files.readString(CONTRACT)));
+  }
+
+  private static final String PLANNED = "x-ossm-planned";
+
+  /** The contract minus what is marked as planned: operations, paths left empty, and schemas. */
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> withoutPlanned(Map<String, Object> spec) {
+    var paths = (Map<String, Map<String, Object>>) spec.get("paths");
+    paths
+        .values()
+        .forEach(
+            methods ->
+                methods
+                    .entrySet()
+                    .removeIf(
+                        e ->
+                            Boolean.TRUE.equals(
+                                ((Map<String, Object>) e.getValue()).get(PLANNED))));
+    paths.values().removeIf(Map::isEmpty);
+    var components = (Map<String, Object>) spec.getOrDefault("components", Map.of());
+    var schemas = (Map<String, Map<String, Object>>) components.getOrDefault("schemas", Map.of());
+    schemas.values().removeIf(schema -> Boolean.TRUE.equals(schema.get(PLANNED)));
+    return spec;
   }
 
   @SuppressWarnings("unchecked")

@@ -749,6 +749,357 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  # Video library (spec 03). Every operation and schema below is marked x-ossm-planned: the web
+  # UI builds against it now, and the backend's contract test skips it until tickets 20 to 25
+  # implement it. Remove the marker in the ticket that serves the operation.
+  /api/v1/videos:
+    get:
+      operationId: listVideos
+      x-ossm-planned: true
+      summary: Videos in the shared library
+      description: >
+        Movies or episodes, by kind. Everything unless limit and offset are
+        given. Sorted by sort (added, newest first; title; or year, newest
+        first) with a stable tie-break. The total is in X-Total-Count.
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/PageOffset"
+        - name: kind
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [MOVIE, EPISODE]
+            default: MOVIE
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [added, title, year]
+            default: added
+      responses:
+        "200":
+          description: Videos
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Video"
+  /api/v1/videos/recent:
+    get:
+      operationId: listRecentVideos
+      x-ossm-planned: true
+      summary: The newest movies and episodes, newest first
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Videos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Video"
+  /api/v1/videos/continue-watching:
+    get:
+      operationId: listContinueWatching
+      x-ossm-planned: true
+      summary: Your videos in progress, most recently watched first
+      description: Watched videos are left out, and a show appears once, as its latest episode.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Videos with your progress
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Video"
+  /api/v1/videos/{id}:
+    get:
+      operationId: getVideo
+      x-ossm-planned: true
+      summary: A video, its subtitles and what to watch next
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+      responses:
+        "200":
+          description: The video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoDetail"
+        "404":
+          description: No such video
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      operationId: updateVideo
+      x-ossm-planned: true
+      summary: Correct a video's details
+      description: >
+        Only the uploader and admins. Turning a video into an episode files it
+        under the named show, creating the show if there is none by that name;
+        a show left with no episodes is removed.
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoUpdate"
+      responses:
+        "200":
+          description: The updated video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+        "400":
+          description: Invalid details (an episode needs a show, season and episode number)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: You did not upload this video and are not an admin
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: No such video
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/videos/{id}/stream:
+    get:
+      operationId: streamVideo
+      x-ossm-planned: true
+      summary: The video file, as stored (direct play, no transcoding)
+      description: Same rules as the track stream (ADR 0006), including a single byte range.
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+          example: bytes=0-1023
+      responses:
+        "200":
+          description: The whole file
+          content:
+            video/*:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: The requested byte range
+          content:
+            video/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: No such video, or its file is missing from storage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "416":
+          description: The range starts beyond the end of the file
+  /api/v1/videos/{id}/thumbnail:
+    get:
+      operationId: getVideoThumbnail
+      x-ossm-planned: true
+      summary: The frame taken from the video at ingest
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+      responses:
+        "200":
+          description: The image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: No such video or no thumbnail
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/videos/{id}/subtitles:
+    post:
+      operationId: addSubtitle
+      x-ossm-planned: true
+      summary: Attach a subtitle file (.srt or .vtt) to a video
+      description: SRT is converted to WebVTT. At most 2 MB.
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                language:
+                  type: string
+                  description: A language tag such as en; guessed from the filename when left out
+      responses:
+        "201":
+          description: The subtitle track
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subtitle"
+        "400":
+          description: Not a subtitle file, or too large
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: No such video
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/videos/{id}/subtitles/{index}:
+    get:
+      operationId: getSubtitle
+      x-ossm-planned: true
+      summary: One subtitle track as WebVTT
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: The subtitles
+          content:
+            text/vtt:
+              schema:
+                type: string
+        "404":
+          description: No such video or subtitle track
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/videos/{id}/progress:
+    put:
+      operationId: saveWatchProgress
+      x-ossm-planned: true
+      summary: Remember where you are in a video
+      description: >
+        Last write wins. The video counts as watched once 90% of it or all but
+        the last 2 minutes have been reached.
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchProgressRequest"
+      responses:
+        "200":
+          description: Your progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchProgress"
+        "400":
+          description: Invalid position
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: No such video
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/shows:
+    get:
+      operationId: listShows
+      x-ossm-planned: true
+      summary: Shows in the shared library
+      description: >
+        Everything unless limit and offset are given. Sorted by sort (added:
+        newest episode first; title; or year) with a stable tie-break. The total
+        is in X-Total-Count.
+      parameters:
+        - $ref: "#/components/parameters/PageLimit"
+        - $ref: "#/components/parameters/PageOffset"
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [added, title, year]
+            default: added
+      responses:
+        "200":
+          description: Shows
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/TotalCount"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Show"
+  /api/v1/shows/{id}:
+    get:
+      operationId: getShow
+      x-ossm-planned: true
+      summary: A show and its episodes by season
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The show
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShowDetail"
+        "404":
+          description: No such show
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   headers:
     TotalCount:
@@ -798,6 +1149,13 @@ components:
       required: true
       schema:
         type: string
+    VideoId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   schemas:
     CreateUploadRequest:
       type: object
@@ -1219,3 +1577,203 @@ components:
         database:
           type: string
           enum: [UP, DOWN]
+    Video:
+      x-ossm-planned: true
+      type: object
+      required: [id, kind, title, durationMs, playable, license, uploadedBy, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [MOVIE, EPISODE]
+        title:
+          type: string
+          description: The movie's title, or the episode's own title (the filename when it has none)
+        year:
+          type: integer
+        description:
+          type: string
+        showId:
+          type: string
+          format: uuid
+          description: Episodes only
+        showName:
+          type: string
+          description: Episodes only
+        season:
+          type: integer
+          description: Episodes only
+        episode:
+          type: integer
+          description: Episodes only
+        durationMs:
+          type: integer
+          format: int64
+        width:
+          type: integer
+        height:
+          type: integer
+        videoCodec:
+          type: string
+          description: As ffprobe names it, e.g. h264, hevc, av1, vp9
+        audioCodec:
+          type: string
+        container:
+          type: string
+          description: mp4, mov, webm or mkv
+        bitrateKbps:
+          type: integer
+        playable:
+          type: boolean
+          description: False when the browser may not be able to play the file as stored
+        thumbnailUrl:
+          type: string
+          description: Same-origin path to the thumbnail, when it has one
+        license:
+          type: string
+          enum: [All rights reserved, CC BY, CC BY-SA, CC BY-NC, CC BY-ND, CC BY-NC-SA, CC BY-NC-ND, CC0]
+        uploadedBy:
+          type: string
+          description: Username of who uploaded it
+        createdAt:
+          type: string
+          format: date-time
+        progress:
+          $ref: "#/components/schemas/WatchProgress"
+    VideoDetail:
+      x-ossm-planned: true
+      type: object
+      required: [video, subtitles, upNext, canEdit]
+      properties:
+        video:
+          $ref: "#/components/schemas/Video"
+        subtitles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Subtitle"
+        upNext:
+          type: array
+          description: >
+            For an episode, the rest of its season and then the next season, in
+            order. For a movie, other movies, newest first.
+          items:
+            $ref: "#/components/schemas/Video"
+        canEdit:
+          type: boolean
+          description: Whether you may change its details (you uploaded it, or you are an admin)
+    VideoUpdate:
+      x-ossm-planned: true
+      type: object
+      required: [kind, title]
+      properties:
+        kind:
+          type: string
+          enum: [MOVIE, EPISODE]
+        title:
+          type: string
+          minLength: 1
+        year:
+          type: integer
+        showName:
+          type: string
+          description: Required for an episode
+        season:
+          type: integer
+          minimum: 0
+        episode:
+          type: integer
+          minimum: 0
+    Subtitle:
+      x-ossm-planned: true
+      type: object
+      required: [index, label, url]
+      properties:
+        index:
+          type: integer
+        language:
+          type: string
+          description: A language tag such as en, when known
+        label:
+          type: string
+          description: What the subtitles menu shows, e.g. English
+        url:
+          type: string
+          description: Same-origin path to the WebVTT file
+    WatchProgress:
+      x-ossm-planned: true
+      type: object
+      required: [positionMs, durationMs, watched, updatedAt]
+      properties:
+        positionMs:
+          type: integer
+          format: int64
+        durationMs:
+          type: integer
+          format: int64
+        watched:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+    WatchProgressRequest:
+      x-ossm-planned: true
+      type: object
+      required: [positionMs, durationMs]
+      properties:
+        positionMs:
+          type: integer
+          format: int64
+          minimum: 0
+        durationMs:
+          type: integer
+          format: int64
+          minimum: 0
+    Show:
+      x-ossm-planned: true
+      type: object
+      required: [id, name, seasonCount, episodeCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        seasonCount:
+          type: integer
+        episodeCount:
+          type: integer
+        thumbnailUrl:
+          type: string
+          description: The latest episode's thumbnail, when it has one
+        progress:
+          $ref: "#/components/schemas/WatchProgress"
+    ShowDetail:
+      x-ossm-planned: true
+      type: object
+      required: [show, uploadedBy, seasons]
+      properties:
+        show:
+          $ref: "#/components/schemas/Show"
+        uploadedBy:
+          type: string
+          description: Who uploaded the first episode
+        seasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/Season"
+        resume:
+          $ref: "#/components/schemas/Video"
+    Season:
+      x-ossm-planned: true
+      type: object
+      required: [number, episodes]
+      properties:
+        number:
+          type: integer
+        episodes:
+          type: array
+          description: In episode order
+          items:
+            $ref: "#/components/schemas/Video"

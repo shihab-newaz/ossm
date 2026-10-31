@@ -26,3 +26,5 @@ The video pipeline end to end for the simplest case: a user uploads an MP4, inge
 - [ ] UI tests cover video upload progress and the ingesting state.
 
 ## Comments
+
+- 2026-10-31, web: the video contract is in `contract/openapi.yaml`, with every new operation and schema marked `x-ossm-planned: true` (the backend's contract test skips those). Remove the marker for each operation as it is served. The `/videos` grid, cards and thumbnails are built and tested against MSW. Not done: the upload screen changes (kind, 20 GB cap, paged part URLs, GB progress). They change the existing upload schemas, so they belong with this ticket's backend work.

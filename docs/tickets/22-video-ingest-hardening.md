@@ -21,3 +21,5 @@
 - [ ] An ffprobe timeout is a terminal failure with a readable reason, and retry works from the upload screen.
 
 ## Comments
+
+- 2026-10-31, web: the "may not play in this browser" badge (cards and watch page) and the explanation with "Try anyway" are built, driven by `playable` from the API.

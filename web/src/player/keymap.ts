@@ -14,14 +14,14 @@ export const SHORTCUTS: { keys: string[]; action: string }[] = [
 ];
 
 /** True when keystrokes belong to a form control, so shortcuts must stay out of the way. */
-function isTyping(target: EventTarget | null): boolean {
+export function isTyping(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   if (!el || !el.tagName) return false;
   return el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
 }
 
 /** Elements that already do something with Space (and Enter), where taking Space would break them. */
-function activatesOnSpace(target: EventTarget | null): boolean {
+export function activatesOnSpace(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   return !!el?.closest?.('button, a[href], summary, [role="button"], [role="menuitem"], [role="switch"], [role="checkbox"]');
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AlertTriangle, Users } from "lucide-react";
 import { useMe } from "@/auth/session";
-import { isActive, navItems } from "./nav";
+import { isActive, sidebarItems } from "./nav";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -19,7 +19,7 @@ export function Sidebar() {
       </div>
       <nav aria-label="Main">
         <ul className="flex flex-col gap-1">
-          {navItems.map(({ href, label, Icon }) => {
+          {sidebarItems.map(({ href, label, Icon }) => {
             const active = isActive(pathname, href);
             return (
               <li key={href}>

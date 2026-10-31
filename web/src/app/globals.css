@@ -18,6 +18,7 @@
   --color-on-accent: var(--on-accent);
   --color-success: var(--success);
   --color-danger: var(--danger);
+  --color-warning: var(--warning);
   --radius-card: 12px;
   --radius-tile: 16px;
   --radius-banner: 20px;
@@ -115,6 +116,19 @@ body {
 .slider:focus-visible::-moz-range-thumb,
 .slider:active::-moz-range-thumb {
   opacity: 1;
+}
+
+/* The video seek bar: always the accent fill, with the thumb showing, on the dark watch page. */
+.slider.slider-accent {
+  --slider-fill: var(--accent);
+}
+.slider.slider-accent::-webkit-slider-thumb {
+  opacity: 1;
+  background: #fff;
+}
+.slider.slider-accent::-moz-range-thumb {
+  opacity: 1;
+  background: #fff;
 }
 
 /* Now-playing equalizer (DESIGN.md 4.7): three bars. They hold still when paused or when motion is reduced. */

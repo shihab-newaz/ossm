@@ -305,8 +305,11 @@ describe("keyboard shortcuts", () => {
     const help = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
 
     for (const action of ["Play or pause", "Seek back or forward 5 seconds", "Previous track", "Next track", "Mute or unmute", "Search", "Show this list"]) {
-      expect(within(help).getByText(action)).toBeInTheDocument();
+      // Play/pause, seeking and mute are listed for music and again under Video.
+      expect(within(help).getAllByText(action).length).toBeGreaterThan(0);
     }
+    expect(within(help).getByText("Seek back or forward 10 seconds")).toBeInTheDocument();
+    expect(within(help).getByText("Subtitles on or off")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

@@ -1,6 +1,7 @@
 "use client";
 
 import { ListMusic, Music, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { attachMediaSession } from "@/player/mediaSession";
 import { formatTime } from "@/player/format";
@@ -17,6 +18,7 @@ const small = "grid size-11 place-items-center rounded-full hover:bg-surface-hov
 export function PlayerBar() {
   const { track, status, currentTime, duration, volume, muted, shuffle, repeat, queue, index } = usePlayer();
   const [queueOpen, setQueueOpen] = useState(false);
+  const pathname = usePathname() ?? "";
 
   // Lock screen and media keys follow the player for as long as the app shell is on screen.
   useEffect(() => attachMediaSession(player), []);
@@ -27,6 +29,9 @@ export function PlayerBar() {
   const RepeatIcon = repeat === "one" ? Repeat1 : Repeat;
   // At the end of the queue with repeat off there is nothing after this track.
   const hasNext = repeat === "all" ? queue.length > 0 : index + 1 < queue.length;
+
+  // The watch page has the screen to itself unless there is music to come back to.
+  if (!track && pathname.startsWith("/watch/")) return null;
 
   return (
     <section

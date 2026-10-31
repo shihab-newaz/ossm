@@ -274,3 +274,42 @@ describe("following a genre tile", () => {
     expect(screen.getByRole("button", { name: "Show the whole library" })).toBeInTheDocument();
   });
 });
+
+describe("videos on Explore", () => {
+  const video = (n: number, extra: Json = {}): Json => ({
+    id: `v${n}`,
+    kind: "MOVIE",
+    title: `Movie ${n}`,
+    year: 2010,
+    durationMs: 888_000,
+    playable: true,
+    license: "CC BY",
+    uploadedBy: "maya",
+    createdAt: "2026-10-12T10:00:00Z",
+    ...extra,
+  });
+
+  it("adds Continue watching and Recently added videos after the music", async () => {
+    populated();
+    server.use(
+      http.get("*/api/v1/videos/continue-watching", () => HttpResponse.json([video(1, { progress: { positionMs: 400_000, durationMs: 888_000, watched: false, updatedAt: "2026-10-20T10:00:00Z" } })])),
+      http.get("*/api/v1/videos/recent", () => HttpResponse.json([video(2), video(3)])),
+    );
+    renderExplore();
+
+    const cont = await screen.findByRole("list", { name: "Continue watching" });
+    expect(within(cont).getByRole("link", { name: /Movie 1/ })).toHaveAttribute("href", "/watch/v1");
+    expect(within(screen.getByRole("list", { name: "Recently added videos" })).getAllByRole("link")).toHaveLength(2);
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(headings.indexOf("Most played")).toBeLessThan(headings.indexOf("Continue watching"));
+  });
+
+  it("is not an empty instance when it only has videos", async () => {
+    populated({ total: 0, featured: null, genres: [], recent: [], mostPlayed: [] });
+    server.use(http.get("*/api/v1/videos/recent", () => HttpResponse.json([video(2)])));
+    renderExplore();
+
+    expect(await screen.findByRole("list", { name: "Recently added videos" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Nothing to explore yet" })).not.toBeInTheDocument();
+  });
+});

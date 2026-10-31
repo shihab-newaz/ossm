@@ -8,6 +8,8 @@ import type { components } from "@/api/schema";
 import { AlbumCard, Cover } from "@/library/LibraryScreen";
 import { EmptyState } from "@/library/states";
 import { player } from "@/player/player";
+import { useContinueWatching, useRecentVideos } from "@/video/data";
+import { VideoCard } from "@/video/VideoCard";
 import { Carousel } from "./Carousel";
 import { FeaturedBanner } from "./FeaturedBanner";
 import { GenreTile } from "./GenreTile";
@@ -79,12 +81,17 @@ export function ExploreScreen() {
   const genres = useGenres();
   const recent = useRecentlyAdded();
   const mostPlayed = useMostPlayed();
+  const continueWatching = useContinueWatching();
+  const recentVideos = useRecentVideos();
+  const hasVideos = (recentVideos.data?.length ?? 0) > 0;
+  // A library of only videos is not empty: wait to hear about videos before saying so.
+  const waitingForVideos = total.data === 0 && recentVideos.isPending;
 
   const heading = (
     <h1 className="font-display text-[28px] font-extrabold leading-[34px] tracking-[-0.015em] md:text-4xl md:leading-[42px]">Explore</h1>
   );
 
-  if (total.isPending) {
+  if (total.isPending || waitingForVideos) {
     return (
       <div className="flex flex-col gap-8 py-8">
         {heading}
@@ -109,7 +116,7 @@ export function ExploreScreen() {
       </div>
     );
   }
-  if (total.data === 0) {
+  if (total.data === 0 && !hasVideos) {
     return (
       <div className="flex flex-col gap-4 py-8">
         {heading}
@@ -146,6 +153,12 @@ export function ExploreScreen() {
           ))}
         />
       ) : null}
+
+      {continueWatching.data && continueWatching.data.length > 0 ? (
+        <Carousel title="Continue watching" wide items={continueWatching.data.map((video) => <VideoCard key={video.id} video={video} />)} />
+      ) : null}
+
+      {hasVideos ? <Carousel title="Recently added videos" wide items={recentVideos.data!.map((video) => <VideoCard key={video.id} video={video} />)} /> : null}
     </div>
   );
 }
