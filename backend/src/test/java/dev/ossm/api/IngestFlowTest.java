@@ -208,7 +208,9 @@ class IngestFlowTest {
     var unnamed = user.post("/api/v1/uploads", "{\"filename\":\"\",\"sizeBytes\":10}");
 
     assertThat(tooBig.statusCode()).isEqualTo(400);
-    assertThat(tooBig.body()).contains("at most 250 MB");
+    assertThat(tooBig.body())
+        .contains("\"detail\":\"Files can be at most 250 MB\"")
+        .contains("\"title\":\"Invalid request\"");
     assertThat(empty.statusCode()).isEqualTo(400);
     assertThat(unnamed.statusCode()).isEqualTo(400);
     assertThat(jdbc.queryForObject("select count(*) from upload", Integer.class)).isZero();
@@ -230,7 +232,9 @@ class IngestFlowTest {
     assertThat(bigAudio.statusCode()).isEqualTo(400);
     assertThat(bigAudio.body()).contains("at most 250 MB");
     assertThat(bigVideo.statusCode()).isEqualTo(400);
-    assertThat(bigVideo.body()).contains("at most 20 GB");
+    assertThat(bigVideo.body())
+        .contains("\"detail\":\"Files can be at most 20 GB\"")
+        .contains("\"title\":\"Invalid request\"");
     assertThat(jdbc.queryForObject("select count(*) from upload", Integer.class)).isZero();
   }
 

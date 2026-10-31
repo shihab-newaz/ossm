@@ -16,8 +16,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
@@ -62,7 +64,12 @@ class UploadService {
   UploadTicket create(
       UUID userId, String filename, long sizeBytes, String requestedLicense, UploadKind kind) {
     if (sizeBytes > properties.maxBytes(kind)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, tooLarge(kind));
+      // Worded and titled like the bean-validation errors this check used to be one of.
+      var problem =
+          ProblemDetail.forStatusAndDetail(
+              HttpStatus.BAD_REQUEST, "Files can be at most " + humanSize(kind));
+      problem.setTitle("Invalid request");
+      throw new ErrorResponseException(HttpStatus.BAD_REQUEST, problem, null);
     }
     if (kind == UploadKind.VIDEO) {
       throw new ResponseStatusException(
@@ -122,14 +129,16 @@ class UploadService {
     return new UploadTicket(find(userId, id).orElseThrow(), partSize, parts);
   }
 
-  /** "Files can be at most 250 MB." Caps are whole MB or GB in practice; anything else in bytes. */
   private String tooLarge(UploadKind kind) {
+    return "Files can be at most " + humanSize(kind) + ".";
+  }
+
+  /** "250 MB", "20 GB". Caps are whole MB or GB in practice; anything else is shown in bytes. */
+  private String humanSize(UploadKind kind) {
     long max = properties.maxBytes(kind);
     long mib = 1024L * 1024;
     long gib = 1024 * mib;
-    String size =
-        max % gib == 0 ? max / gib + " GB" : max % mib == 0 ? max / mib + " MB" : max + " bytes";
-    return "Files can be at most " + size + ".";
+    return max % gib == 0 ? max / gib + " GB" : max % mib == 0 ? max / mib + " MB" : max + " bytes";
   }
 
   Upload complete(UUID userId, UUID id, CompleteUploadRequest request) {
