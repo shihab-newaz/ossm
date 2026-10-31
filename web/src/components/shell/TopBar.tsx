@@ -3,6 +3,7 @@
 import { Search, Upload } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { LogoMark } from "@/components/Logo";
 import { searchPalette } from "@/search/palette";
 import { AccountMenu } from "./AccountMenu";
 import { ThemeSwitcher } from "./ThemeSwitcher";
@@ -23,6 +24,10 @@ export function TopBar() {
         scrolled ? "bg-bg/85 backdrop-blur-[12px]" : "bg-bg"
       }`}
     >
+      {/* The sidebar carries the logo on desktop; below lg the mark sits here instead. */}
+      <Link href="/" aria-label="OSSM home" className="shrink-0 rounded-card lg:hidden">
+        <LogoMark />
+      </Link>
       {/* The pill opens the search palette; the typing happens there, so Ctrl+K, "/" and a click all land in one place. */}
       <button
         onClick={searchPalette.open}
