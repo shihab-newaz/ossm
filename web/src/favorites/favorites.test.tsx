@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { Providers } from "@/components/Providers";
 import { PlayerBar } from "@/components/shell/PlayerBar";
 import { ToastHost } from "@/components/ui/ToastHost";
@@ -217,6 +217,11 @@ describe("the History page", () => {
     );
 
   it("lists plays most recent first, once per play, with when each happened", async () => {
+    // Midday, so "1 hour ago" is today and "30 hours ago" is yesterday whenever the suite runs.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 5, 15, 12, 0) });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
     server.use(
       http.get("*/api/v1/history", () =>
