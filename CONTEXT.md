@@ -15,3 +15,11 @@ Domain terms for OSSM. Filled in lazily as the language settles; add a term when
 **Top result**: the single best match of a search across tracks, albums and artists. An artist beats an album beats a track when scores tie.
 
 **Featured album**: the newest album that has a cover. Shown in the Explore banner.
+
+**Vault**: a user's private set of videos. Nobody else can see it, admins included. See spec 03.
+
+**Video**: an uploaded video file and its details (title, description, optional duration, resolution and thumbnail). Flat: no movies, shows or episodes.
+
+**Original**: a video's stored file, byte-for-byte as uploaded. Never re-encoded or rewritten, and always downloadable.
+
+**Video playlist**: an ordered, private list of a user's videos. Separate from any music playlist; a video appears in it at most once.
