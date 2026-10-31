@@ -19,7 +19,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Video uploads end to end (spec 03): real Postgres, real SeaweedFS, real ffprobe/ffmpeg. The tests
- * that ingest need ffmpeg on the PATH (ADR 0009) and are skipped without it; CI installs it.
+ * that ingest need ffmpeg on the PATH (ADR 0010) and are skipped without it; CI installs it.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestInfrastructure.class)

@@ -30,7 +30,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
- * Ingest for a video upload (spec 03, ADR 0009): what the file is from its bytes, its streams from
+ * Ingest for a video upload (spec 03, ADR 0010): what the file is from its bytes, its streams from
  * ffprobe, a SHA-256 for duplicates, one thumbnail, its text subtitles, and a movie or episode row
  * named from the filename. Store and database faults throw, so the queue retries; a file that
  * cannot be read fails for good with a reason people can read.

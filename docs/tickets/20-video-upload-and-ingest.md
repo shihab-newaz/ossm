@@ -1,7 +1,7 @@
 # 20: Video upload, ingest and a movie appears (MP4 happy path)
 
 **Parent:** docs/specs/03-video-library.md
-**Status:** ready-for-agent
+**Status:** in-review (code and tests done; the first real upload is the manual QA)
 **Blocked by:** 19 (Video spike)
 
 ## What to build
@@ -12,7 +12,7 @@ The video pipeline end to end for the simplest case: a user uploads an MP4, inge
 - Migration: `video` table (kind, title, year, duration, width, height, codecs, container, bitrate, playable, content hash, object key, size, thumbnail key, license, uploader, created) and `upload.kind` plus `upload.video_id`.
 - Per-kind size cap: 250 MB audio, 20 GB video (`ossm.ingest.max-video-bytes`), enforced on the client, on the declared size and on the stored size.
 - Part URLs issued in pages so a 20 GB upload does not presign every part up front. The web uploader asks for the next page as it goes.
-- `MediaProbe` port with an ffprobe/ffmpeg adapter (ADR 0009): probe over a presigned GET URL, thumbnail at 10% of duration, stored under `thumbs/`.
+- `MediaProbe` port with an ffprobe/ffmpeg adapter (ADR 0010): probe over a presigned GET URL, thumbnail at 10% of duration, stored under `thumbs/`.
 - ffmpeg in the API Dockerfile and in CI.
 - Web: upload screen accepts video and shows the right cap and formats; a basic `/videos` grid of thumbnails and titles.
 
@@ -28,3 +28,5 @@ The video pipeline end to end for the simplest case: a user uploads an MP4, inge
 ## Comments
 
 - 2026-10-31, web: the video contract is in `contract/openapi.yaml`, with every new operation and schema marked `x-ossm-planned: true` (the backend's contract test skips those). Remove the marker for each operation as it is served. The `/videos` grid, cards and thumbnails are built and tested against MSW. Not done: the upload screen changes (kind, 20 GB cap, paged part URLs, GB progress). They change the existing upload schemas, so they belong with this ticket's backend work.
+
+- 2026-10-31, backend: done. Migration V9 (`video_show`, `video`, `subtitle`, `watch_progress`, `upload.kind`, `upload.video_id`); 20 GB cap on the declared and stored size; part URLs 200 at a time (`GET /uploads/{id}/parts?from=`); `MediaProbe` with the ffprobe/ffmpeg adapter; thumbnail at 10% of the duration, clamped to 5 s–5 min; ffmpeg in the Dockerfile and CI. The upload screen now takes music and video, whole folders, GB progress and cancel. Covered by `VideoFlowTest` (the MP4 test needs ffmpeg and is skipped without it) and the web upload tests. API guide: `docs/api.md`.

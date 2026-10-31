@@ -3,7 +3,7 @@ package dev.ossm.api.ingest;
 import java.util.List;
 
 /**
- * Reads a video over HTTP (ADR 0009): what is in it, one frame, its text subtitles. The adapter
+ * Reads a video over HTTP (ADR 0010): what is in it, one frame, its text subtitles. The adapter
  * runs ffprobe and ffmpeg; nothing here ever transcodes the video itself.
  */
 interface MediaProbe {

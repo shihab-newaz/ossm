@@ -18,3 +18,5 @@
 - [ ] README describes video support and its limits.
 
 ## Comments
+
+- 2026-10-31: README now describes video support, formats, the playability badge, disk use and ffmpeg in the image. PROGRESS.md is updated. The rest of this ticket is untouched.

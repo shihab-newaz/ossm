@@ -11,7 +11,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 /**
  * Short-lived read URLs signed for the store's internal address, for tools on the API's side (like
- * ffprobe, ADR 0009) that read an object by range over HTTP. They are never sent to a browser.
+ * ffprobe, ADR 0010) that read an object by range over HTTP. They are never sent to a browser.
  */
 @Component
 public class InternalUrls implements AutoCloseable {

@@ -1,7 +1,7 @@
 # 21: Stream and watch a video
 
 **Parent:** docs/specs/03-video-library.md
-**Status:** ready-for-agent
+**Status:** in-review (Media Session and a real-browser check still to do)
 **Blocked by:** 20 (Video upload and ingest)
 
 ## What to build
@@ -23,3 +23,5 @@
 ## Comments
 
 - 2026-10-31, web: the watch page, video engine (`web/src/video/engine.ts`, fake-element tests), controls, keyboard shortcuts (listed in the ? dialog) and music pausing are built. The page is forced dark while open. Not done: Media Session for video, and a real-browser check.
+
+- 2026-10-31, backend: `GET /videos/{id}/stream` uses the same single-range streamer as tracks (`storage/ObjectStreamer`), so the ADR 0006 rules hold for both. The range test is in `VideoFlowTest`. No video-specific test for a deactivated user yet; the session rule is shared with every route.

@@ -1,6 +1,6 @@
 # Video library UI build prompt
 
-Prompt for building the OSSM video library web UI (spec 03, tickets 20–27, web side) against a mocked API. Source documents: `DESIGN.md`, `docs/specs/03-video-library.md`, ADRs 0006, 0007 and 0009.
+Prompt for building the OSSM video library web UI (spec 03, tickets 20–27, web side) against a mocked API. Source documents: `DESIGN.md`, `docs/specs/03-video-library.md`, ADRs 0006, 0007 and 0010.
 
 ---
 

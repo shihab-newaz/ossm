@@ -1,7 +1,7 @@
 # 25: Watch progress, resume and Continue watching
 
 **Parent:** docs/specs/03-video-library.md
-**Status:** ready-for-agent
+**Status:** in-review (ADR 0008 addendum on video play events not written)
 **Blocked by:** 21 (Stream and watch a video)
 
 ## What to build
@@ -23,3 +23,5 @@
 ## Comments
 
 - 2026-10-31, web: resume with "Start over", the watched threshold (`web/src/video/progress.ts`), throttled progress reports (15 s, on pause, after a seek, keepalive on pagehide) and progress bars and watched checks on thumbnails are built. Still to decide: whether video emits play events (ADR 0008 addendum).
+
+- 2026-10-31, backend: `PUT /videos/{id}/progress` (last write wins, watched at 90% or under 2 minutes left) and `GET /videos/continue-watching` (one entry per show, watched items dropped). Progress resuming across sessions is in `VideoFlowTest`. Undecided: whether video sends play events.

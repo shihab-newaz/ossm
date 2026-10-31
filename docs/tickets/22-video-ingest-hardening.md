@@ -1,7 +1,7 @@
 # 22: Video ingest hardening (all containers, playability, dedupe, filenames)
 
 **Parent:** docs/specs/03-video-library.md
-**Status:** ready-for-agent
+**Status:** in-progress (MOV, WebM, MKV and timeout fixtures not tested yet)
 **Blocked by:** 20 (Video upload and ingest)
 
 ## What to build
@@ -23,3 +23,5 @@
 ## Comments
 
 - 2026-10-31, web: the "may not play in this browser" badge (cards and watch page) and the explanation with "Try anyway" are built, driven by `playable` from the API.
+
+- 2026-10-31, backend: built: byte sniffing (`VideoSniffer`), the playability rule (`Playability`, unit tested), SHA-256 dedupe ending as `DUPLICATE` with the object deleted, the filename parser (`VideoNames`, unit tested), readable failure reasons including timeouts, and retry. Tested: an MP4 and a non-video. Not tested yet: MOV, WebM and MKV fixtures, a pure-audio MKV, two identical uploads at once, an ffprobe timeout.

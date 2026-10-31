@@ -1782,7 +1782,7 @@ export interface operations {
                     "application/json": components["schemas"]["UploadTicket"];
                 };
             };
-            /** @description Missing file name, or a file larger than 250 MB */
+            /** @description Missing file name, or a file over its cap (250 MB for audio, 20 GB for video) */
             400: {
                 headers: {
                     [name: string]: unknown;

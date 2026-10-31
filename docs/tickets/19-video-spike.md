@@ -1,7 +1,7 @@
 # 19: Video spike (ffprobe over presigned URLs, browser playability)
 
 **Parent:** docs/specs/03-video-library.md
-**Status:** ready-for-agent
+**Status:** skipped (the build went ahead without it; the browser checks below are still open)
 **Blocked by:** None
 
 ## What to build
@@ -18,6 +18,8 @@ A time-boxed spike, like ticket 02, to prove the risky parts of spec 03 before b
 
 - [ ] A findings note in `docs/spikes/` answers each bullet above with numbers.
 - [ ] The playability table in spec 03 is confirmed or corrected.
-- [ ] ADR 0009 is updated if anything in it turned out wrong.
+- [ ] ADR 0010 is updated if anything in it turned out wrong.
 
 ## Comments
+
+- 2026-10-31, backend: skipped. The pipeline was built directly. Answered along the way: ffprobe and ffmpeg read from an internal presigned URL; installing ffmpeg in `eclipse-temurin:25-jre` makes the API image about 1.2 GB, so ADR 0010 (renumbered from 0009) was corrected. Still open: which container and codec pairs really play in Chrome, Firefox and Safari, seek latency on multi-GB files, and browser memory on a ~10 GB upload.

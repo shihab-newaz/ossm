@@ -1,6 +1,6 @@
 # Progress
 
-Where OSSM stands against `docs/specs/01-phase-1-core-app.md`. Tickets are in `docs/tickets/`; this file is the summary. Last updated 2026-10-10, on top of commit `f2948f2`.
+Where OSSM stands against `docs/specs/01-phase-1-core-app.md`. Tickets are in `docs/tickets/`; this file is the summary. Last updated 2026-10-31, on the `video-library` branch.
 
 ## Tickets
 
@@ -29,21 +29,21 @@ Where OSSM stands against `docs/specs/01-phase-1-core-app.md`. Tickets are in `d
 
 ## Video library (spec 03)
 
-Spec: `docs/specs/03-video-library.md`. Started 2026-10-30 and runs alongside the rest of Phase 1. Decisions: a general library of movies and shows, played straight from the file (no transcoding), ffmpeg used only for probing, thumbnails and subtitles (ADR 0009), MP4/MOV/WebM/MKV accepted, 20 GB cap, sidecar and embedded text subtitles.
+Spec: `docs/specs/03-video-library.md`. Started 2026-10-30 and runs alongside the rest of Phase 1. Decisions: a general library of movies and shows, played straight from the file (no transcoding), ffmpeg used only for probing, thumbnails and subtitles (ADR 0010), MP4/MOV/WebM/MKV accepted, 20 GB cap, sidecar and embedded text subtitles.
 
 | # | Ticket | Status |
 | --- | --- | --- |
-| 19 | Video spike | next |
-| 20 | Video upload and ingest (MP4 happy path) | ready (web grid done; upload screen not) |
-| 21 | Stream and watch a video | web done |
-| 22 | Video ingest hardening | ready (web badge done) |
-| 23 | Shows and metadata editing | web done |
-| 24 | Subtitles | web done |
-| 25 | Watch progress and Continue watching | web done |
-| 26 | Videos in navigation, Explore and search | web done except search |
-| 27 | Video on mobile and polish | ready |
+| 19 | Video spike | skipped: built without it; the browser playability checks it planned are still open |
+| 20 | Video upload and ingest (MP4 happy path) | in-review: first real upload is the manual QA |
+| 21 | Stream and watch a video | in-review: Media Session and a real-browser check still to do |
+| 22 | Video ingest hardening | in-progress: MOV, WebM, MKV and timeout fixtures not yet tested |
+| 23 | Shows and metadata editing | in-review: no test yet for 403 on edit |
+| 24 | Subtitles | in-review: no embedded-subtitle fixture test yet |
+| 25 | Watch progress and Continue watching | in-review: ADR 0008 addendum on video play events not written |
+| 26 | Videos in navigation, Explore and search | in-progress: search not started |
+| 27 | Video on mobile and polish | ready (README part done) |
 
-"web done" means the screens are built from the Claude Design mockups and tested against MSW, against the planned video contract. No backend serves them yet. Contract operations for video carry `x-ossm-planned: true`, which the backend's contract test skips. Each backend ticket removes the marker for what it serves.
+Backend and web are both built and every video operation is served; no contract entry is marked `x-ossm-planned` any more. The three `VideoFlowTest` tests that ingest a real video need ffmpeg and are skipped on a machine without it; CI installs it.
 
 ## What works today
 
@@ -57,12 +57,16 @@ Spec: `docs/specs/03-video-library.md`. Started 2026-10-30 and runs alongside th
 - **Search:** one endpoint over Postgres trigrams and prefix full text (ADR 0009), a command palette on Ctrl/Cmd+K and "/", and a full results page.
 - **Favorites and History:** like from any track row or the player bar (or press L), a Liked page and a History page. The like state is consistent everywhere without a reload.
 - **Most played:** the endpoint and the Explore carousel exist; there is no screen of its own.
+- **Video upload:** music and video in one upload screen, whole folders by drag or "Choose a folder", 20 GB per video with part URLs handed out 200 at a time, and `.srt`/`.vtt` files attached to the video with the same name.
+- **Video ingest:** container from the bytes, ffprobe for streams, SHA-256 dedupe, a thumbnail, embedded text subtitles to WebVTT, and movie/episode filing from the filename (ADR 0010).
+- **Watching:** Movies and Shows grids, show pages with seasons, a dark watch page with keyboard shortcuts, subtitles, resume, next-episode countdown, Edit details, and Continue watching and Recently added rows on Explore. Videos stream from the file with range requests; there is no transcoding.
+- **API guide:** `docs/api.md`, with Swagger UI at `/api/docs`.
 
 ## Numbers
 
-- Migrations V1 to V8.
-- Web: 264 tests. Backend: the full suite plus the restart tests run in CI.
-- ADRs 0001 to 0009.
+- Migrations V1 to V9.
+- Web: 318 tests. Backend: 182 tests (4 skipped locally: 3 need ffmpeg, 1 needs a music folder), plus the restart tests, all run in CI.
+- ADRs 0001 to 0010.
 
 ## Known gaps
 
@@ -74,6 +78,10 @@ Spec: `docs/specs/03-video-library.md`. Started 2026-10-30 and runs alongside th
 - **Search** has no accent folding ("Beyonce" does not find "Beyoncé"), and one-letter queries are the slowest (about 240 ms on 6,000 tracks).
 - **History** is a flat list with a time on each row, not grouped under day headings.
 - **Queue drawer rows** have no like heart yet.
+- **Video image size:** ffmpeg makes the API image about 1.2 GB, not the 80–100 MB more that ADR 0010 first guessed.
+- **Video search:** search finds music only.
+- **Video playability** is a rule from spec 03, not yet checked in Firefox and Safari (ticket 19's open part).
+- **Video in Media Session** (OS media keys and lock screen) is not wired up.
 
 ## Test infrastructure notes
 
@@ -82,7 +90,7 @@ Spec: `docs/specs/03-video-library.md`. Started 2026-10-30 and runs alongside th
 
 ## Next
 
-1. A real-browser pass over tickets 08, 10, 11, 12 and 13.
+1. A real-browser pass over tickets 08, 10, 11, 12 and 13, and the video QA with a real folder of videos.
 2. Ticket 14: playlists.
 3. Ticket 16: the polish and accessibility pass (desktop only, while 15 is deferred).
 4. Ticket 17: deploy and demo.

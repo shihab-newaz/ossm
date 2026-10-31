@@ -1,7 +1,7 @@
 # 26: Videos in navigation, Explore and search
 
 **Parent:** docs/specs/03-video-library.md
-**Status:** ready-for-agent
+**Status:** in-progress (search not started)
 **Blocked by:** 23 (Shows and metadata editing), 25 (Watch progress), 12 (Search)
 
 ## What to build
@@ -20,3 +20,5 @@
 ## Comments
 
 - 2026-10-31, web: the sidebar Videos item (mobile reaches it from Library), the virtualized Movies and Shows grids, and the Explore "Continue watching" and "Recently added videos" rows are built. Not done: search.
+
+- 2026-10-31, backend: paged `GET /videos` and `GET /shows` with `X-Total-Count`, plus `/videos/recent` for Explore. Search still covers music only.

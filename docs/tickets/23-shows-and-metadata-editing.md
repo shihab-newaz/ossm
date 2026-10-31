@@ -1,7 +1,7 @@
 # 23: Shows, seasons and editing video metadata
 
 **Parent:** docs/specs/03-video-library.md
-**Status:** ready-for-agent
+**Status:** in-review (no test yet for 403 on edit)
 **Blocked by:** 22 (Video ingest hardening)
 
 ## What to build
@@ -21,3 +21,5 @@
 ## Comments
 
 - 2026-10-31, web: the Shows tab, show page (season tabs, resume) and the Edit details dialog (PATCH) are built. The next-episode card with its 10 s countdown is built too. The show picker uses the browser's suggestion list rather than the custom dropdown in the design.
+
+- 2026-10-31, backend: `GET /shows`, `GET /shows/{id}` (seasons, episodes in order, `resume`) and `PATCH /videos/{id}` for the uploader or an admin. Moving to a new show name creates it; an empty show is removed. `VideoFlowTest` covers filing episodes under their show. Not yet tested: 403 for someone else's video.

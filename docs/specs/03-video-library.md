@@ -59,7 +59,7 @@ Work starts now and runs alongside the rest of Phase 1 (tickets 12 to 18). Ticke
 - Two kinds of video: **Movie** (title, year) and **Episode** (show, season number, episode number, optional episode title). A **Show** groups episodes by season. No seasons table: season is a number on the episode.
 - Videos and tracks are separate domain types and tables. They share the upload, ingest queue, storage and streaming machinery, not a table.
 
-**Ingest (ADR 0009)**
+**Ingest (ADR 0010)**
 - `ffprobe` and `ffmpeg` are added to the API image and run as child processes with a timeout. They are used for probing, one thumbnail frame, and extracting text subtitles. Never for transcoding.
 - `ffprobe` reads the object over an internal presigned GET URL, so probing uses range reads and does not download the whole file. The SHA-256 is computed by a separate streaming read (no temp file).
 - What a file is comes from its bytes: magic numbers for ISO BMFF (MP4/M4V/MOV) and EBML (WebM/MKV) decide that a file is video; `ffprobe` then gives the streams. A file with no video stream is rejected (an audio file goes down the audio path).
@@ -104,7 +104,7 @@ Work starts now and runs alongside the rest of Phase 1 (tickets 12 to 18). Ticke
 
 ## Further Notes
 
-- This reverses spec 01's "no ffmpeg" for the video path only. Audio ingest stays pure JVM. See ADR 0009.
+- This reverses spec 01's "no ffmpeg" for the video path only. Audio ingest stays pure JVM. See ADR 0010.
 - HLS can be added later as a separate phase without changing the domain model: it would add renditions per video, and `playable = false` videos would be the first candidates.
 - The demo instance should seed only public-domain or CC-licensed video (for example Blender open movies), and the license chip applies to videos too.
 - Disk: a few films is tens of GB. The README must say so before the demo seeds video.

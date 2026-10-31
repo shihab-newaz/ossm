@@ -1,7 +1,7 @@
 # 24: Subtitles
 
 **Parent:** docs/specs/03-video-library.md
-**Status:** ready-for-agent
+**Status:** in-review (no embedded-subtitle fixture test yet)
 **Blocked by:** 21 (Stream and watch a video), 22 (Video ingest hardening)
 
 ## What to build
@@ -21,3 +21,5 @@
 ## Comments
 
 - 2026-10-31, web: the subtitles menu (languages, Off, remembered language) and "Add subtitle file…" (multipart POST) are built against the contract.
+
+- 2026-10-31, backend: embedded text subtitles are extracted to WebVTT at ingest (image subtitles skipped); `POST /videos/{id}/subtitles` takes a sidecar `.srt`/`.vtt` up to 2 MB. It is multipart rather than the plain POST this ticket asked for, because the file name is needed to guess the language. SRT-to-VTT is unit tested (`SubtitlesTest`); the sidecar flow is in `VideoFlowTest`. There is no separate list endpoint: the tracks come with `GET /videos/{id}`.
