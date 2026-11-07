@@ -28,11 +28,19 @@ final class StoreClient {
 
   static Started start(Session session, String filename, long size, String license)
       throws Exception {
+    return start(session, filename, size, license, null);
+  }
+
+  /** A null kind leaves it out of the request, as music uploads did before kinds existed. */
+  static Started start(Session session, String filename, long size, String license, String kind)
+      throws Exception {
     var licenseJson = license == null ? "" : ",\"license\":\"%s\"".formatted(license);
+    var kindJson = kind == null ? "" : ",\"kind\":\"%s\"".formatted(kind);
     var response =
         session.post(
             "/api/v1/uploads",
-            "{\"filename\":\"%s\",\"sizeBytes\":%d%s}".formatted(filename, size, licenseJson));
+            "{\"filename\":\"%s\",\"sizeBytes\":%d%s%s}"
+                .formatted(filename, size, licenseJson, kindJson));
     assertThat(response.statusCode()).as(response.body()).isEqualTo(201);
     var urls = new ArrayList<String>();
     var matcher = Pattern.compile("\"url\":\"([^\"]+)\"").matcher(response.body());
@@ -119,7 +127,17 @@ final class StoreClient {
 
   static String upload(Session session, String filename, byte[] file, String license)
       throws Exception {
-    var started = start(session, filename, file.length, license);
+    return upload(session, filename, file, license, null);
+  }
+
+  /** A whole video upload, which is the same handshake with the VIDEO kind. */
+  static String uploadVideo(Session session, String filename, byte[] file) throws Exception {
+    return upload(session, filename, file, null, "VIDEO");
+  }
+
+  private static String upload(
+      Session session, String filename, byte[] file, String license, String kind) throws Exception {
+    var started = start(session, filename, file.length, license, kind);
     var complete =
         session.post(
             "/api/v1/uploads/" + started.uploadId() + "/complete", putParts(started, file));

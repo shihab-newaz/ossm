@@ -32,14 +32,31 @@ class IngestGiveUpTest {
 
   private UUID upload(String status) {
     var id = UUID.randomUUID();
+    // A finished upload points at what it became, which the database insists on.
+    var track = status.equals("DONE") || status.equals("DUPLICATE") ? aTrack() : null;
     jdbc.update(
-        "insert into upload (id, user_id, filename, size_bytes, object_key, s3_upload_id, status)"
-            + " values (?, ?, 'song.mp3', 10, ?, 'x', ?)",
+        "insert into upload (id, user_id, filename, size_bytes, object_key, s3_upload_id, status,"
+            + " track_id) values (?, ?, 'song.mp3', 10, ?, 'x', ?, ?)",
         id,
         user,
         "audio/" + id + ".mp3",
-        status);
+        status,
+        track);
     return id;
+  }
+
+  private UUID aTrack() {
+    var artist = UUID.randomUUID();
+    var track = UUID.randomUUID();
+    jdbc.update("insert into artist (id, name, name_key) values (?, 'Someone', 'someone')", artist);
+    jdbc.update(
+        "insert into track (id, title, artist_id, duration_ms, object_key, size_bytes, uploader_id)"
+            + " values (?, 'Song', ?, 1000, ?, 10, ?)",
+        track,
+        artist,
+        "audio/" + track + ".mp3",
+        user);
+    return track;
   }
 
   @Test

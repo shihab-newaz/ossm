@@ -248,20 +248,6 @@ class IngestFlowTest {
   }
 
   @Test
-  void aVideoWithinItsCapIsRefusedUntilVideoIngestExists() throws Exception {
-    var user = loggedInAdmin();
-
-    var video =
-        user.post(
-            "/api/v1/uploads",
-            "{\"filename\":\"clip.mp4\",\"sizeBytes\":1073741824,\"kind\":\"VIDEO\"}");
-
-    assertThat(video.statusCode()).isEqualTo(400);
-    assertThat(video.body()).contains("Video uploads aren't available yet");
-    assertThat(jdbc.queryForObject("select count(*) from upload", Integer.class)).isZero();
-  }
-
-  @Test
   void anUnknownKindIsRejected() throws Exception {
     var user = loggedInAdmin();
 

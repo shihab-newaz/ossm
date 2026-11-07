@@ -23,3 +23,12 @@ Every listener's audio flows through the API process. That is fine for a self-ho
 Seeking inside a file depends on the store honouring range reads, which SeaweedFS does.
 
 Not covered: conditional requests (`If-Range`, `ETag`). `HEAD` works (Spring derives it from the `GET` mapping and it returns the right length), but it has not been checked whether it opens the object in the store.
+
+## Addendum: the video vault (spec 03, ticket 21)
+
+Video originals use the same mechanism (`GET /api/v1/videos/{id}/stream`, and `/download` for the attachment), with the rules shared in `ObjectResponses` so audio and video cannot drift apart. What differs:
+
+- **Owner first.** A video belongs to one user. The lookup is `where id = ? and owner_id = ?`, so someone else's video, an admin's included, is a `404` before any range or object is looked at. Never a `403`, and never a `416` for a video you cannot see.
+- **`Cache-Control: no-cache, private`**, not a day of `max-age`. A track is shared by everyone who can log in; a video is one person's, and a browser used by two people must not replay one person's video from its cache for the other. Seeking still reads only the ranges it needs; what is lost is only re-use of cached bytes after a reload.
+- **The content type comes from the container recorded at ingest** (`video/mp4`, `video/quicktime`, `video/webm`, `video/x-matroska`), not from the object key or the file name.
+- **Download** adds `Content-Disposition: attachment` with both `filename` (safe ASCII, other characters as `_`) and `filename*=UTF-8''…` (RFC 6266 and 5987), with control characters removed so a file name cannot start another header. It supports ranges too, so an interrupted download can resume.

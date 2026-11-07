@@ -1,7 +1,7 @@
 # 19: Uploads know their kind; part size scales with the file
 
 **Parent:** docs/specs/03-video-vault.md
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** None (can start immediately)
 
 ## What to build

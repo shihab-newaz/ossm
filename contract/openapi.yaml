@@ -414,7 +414,8 @@ paths:
   /api/v1/admin/ingest-failures:
     get:
       operationId: listIngestFailures
-      summary: Failed uploads from everyone (admin)
+      summary: Failed music uploads from everyone (admin)
+      description: Video uploads are left out, since a vault is private to its owner.
       responses:
         "200":
           description: Most recent first
@@ -424,6 +425,127 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/IngestFailure"
+  /api/v1/videos:
+    get:
+      operationId: listVideos
+      summary: Your vault, newest first
+      description: >
+        Only your own videos. Pages follow a cursor, not an offset, so a page never repeats or
+        skips a video even while uploads land: newest first, ties broken by id.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - name: cursor
+          in: query
+          required: false
+          description: The nextCursor of the previous page
+          schema:
+            type: string
+      responses:
+        "200":
+          description: One page of videos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoPage"
+        "400":
+          description: A limit out of range, or a cursor that isn't one of ours
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/videos/{id}:
+    get:
+      operationId: getVideo
+      summary: One of your videos
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+      responses:
+        "200":
+          description: The video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+        "404":
+          description: No such video in your vault
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/v1/videos/{id}/stream:
+    get:
+      operationId: streamVideo
+      summary: Play the original
+      description: >
+        The stored file as uploaded, with byte-range support so seeking is quick. Only the owner can ask for it.
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+        - name: Range
+          in: header
+          required: false
+          description: One byte range, such as bytes=0-1023, bytes=1024- or bytes=-512
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The whole file
+          content:
+            video/*:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: The requested byte range
+          content:
+            video/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: No such video in your vault, or its file is missing from storage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "416":
+          description: The range starts beyond the end of the file
+  /api/v1/videos/{id}/download:
+    get:
+      operationId: downloadVideo
+      summary: Download the original
+      description: >
+        The stored file byte for byte, as an attachment under its original file name. Only the owner can ask for it.
+      parameters:
+        - $ref: "#/components/parameters/VideoId"
+        - name: Range
+          in: header
+          required: false
+          description: One byte range, such as bytes=0-1023, bytes=1024- or bytes=-512
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The whole file
+          content:
+            video/*:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: The requested byte range, so an interrupted download can resume
+          content:
+            video/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: No such video in your vault, or its file is missing from storage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "416":
+          description: The range starts beyond the end of the file
   /api/v1/tracks:
     get:
       operationId: listTracks
@@ -895,6 +1017,13 @@ components:
       schema:
         type: string
         format: uuid
+    VideoId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     UserId:
       name: id
       in: path
@@ -992,9 +1121,47 @@ components:
           type: string
           format: uuid
           description: Present when status is DONE, or DUPLICATE (the track already in the library)
+        videoId:
+          type: string
+          format: uuid
+          description: For a video upload, present when status is DONE, or DUPLICATE (the video already in your vault)
         createdAt:
           type: string
           format: date-time
+    Video:
+      type: object
+      required: [id, title, description, originalFilename, container, sizeBytes, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          description: The file name without its extension, until it is renamed
+        description:
+          type: string
+        originalFilename:
+          type: string
+        container:
+          type: string
+          enum: [MP4, MOV, WEBM, MKV]
+        sizeBytes:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+    VideoPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Video"
+        nextCursor:
+          type: string
+          description: Pass as cursor to get the next page. Absent on the last page.
     IngestFailure:
       type: object
       required: [uploadId, filename, error, username, failedAt]

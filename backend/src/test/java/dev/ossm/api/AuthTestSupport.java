@@ -24,7 +24,7 @@ public final class AuthTestSupport {
     for (int attempt = 1; ; attempt++) {
       try {
         jdbc.execute(
-            "TRUNCATE scheduled_tasks, upload, track, album, artist, spring_session,"
+            "TRUNCATE scheduled_tasks, upload, video, track, album, artist, spring_session,"
                 + " spring_session_attributes, users CASCADE");
         return;
       } catch (org.springframework.dao.PessimisticLockingFailureException e) {

@@ -37,7 +37,9 @@ class IngestAdminController {
     return jdbc.sql(
             "select u.id, u.filename, coalesce(u.error, 'Unknown error') as error, usr.username,"
                 + " u.updated_at from upload u join users usr on usr.id = u.user_id"
-                + " where u.status = 'FAILED' order by u.updated_at desc limit 100")
+                // Music only: a vault is private, so not even its file names reach an admin.
+                + " where u.status = 'FAILED' and u.kind = 'AUDIO'"
+                + " order by u.updated_at desc limit 100")
         .query(
             (rs, i) ->
                 new IngestFailure(

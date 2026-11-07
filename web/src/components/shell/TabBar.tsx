@@ -9,7 +9,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-20 grid h-[var(--tabbar-height)] grid-cols-4 border-t border-border bg-surface lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 grid h-[var(--tabbar-height)] grid-cols-5 border-t border-border bg-surface lg:hidden"
     >
       {navItems.map(({ href, label, Icon }) => {
         const active = isActive(pathname, href);

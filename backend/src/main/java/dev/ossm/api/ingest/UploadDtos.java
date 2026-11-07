@@ -59,6 +59,7 @@ final class UploadDtos {
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UploadStatus status,
       String error,
       UUID trackId,
+      UUID videoId,
       @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt) {}
 
   record UploadPart(

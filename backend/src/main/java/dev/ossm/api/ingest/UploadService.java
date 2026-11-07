@@ -76,10 +76,6 @@ class UploadService {
       problem.setTitle(Problem.INVALID_REQUEST);
       throw new ErrorResponseException(HttpStatus.BAD_REQUEST, problem, null);
     }
-    if (kind == UploadKind.VIDEO) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Video uploads aren't available yet.");
-    }
     final String license;
     try {
       license = Licenses.resolve(requestedLicense);
@@ -88,7 +84,13 @@ class UploadService {
     }
     var bucketName = bucket.ensure();
     var id = UUID.randomUUID();
-    var key = "audio/" + id + IngestService.extensionOf(filename);
+    // A video's id is also its upload's id, so its folder is known before ingest has run.
+    var key =
+        switch (kind) {
+          case AUDIO -> "audio/" + id + IngestService.extensionOf(filename);
+          case VIDEO ->
+              "video/" + userId + "/" + id + "/original" + IngestService.extensionOf(filename);
+        };
     var multipart =
         s3.createMultipartUpload(
             CreateMultipartUploadRequest.builder()
@@ -97,9 +99,11 @@ class UploadService {
                 .contentType("application/octet-stream")
                 .build());
     jdbc.sql(
-            "insert into upload (id, user_id, filename, size_bytes, object_key, s3_upload_id, status,"
-                + " license) values (:id, :user, :filename, :size, :key, :s3, 'UPLOADING', :license)")
+            "insert into upload (id, user_id, kind, filename, size_bytes, object_key, s3_upload_id,"
+                + " status, license) values (:id, :user, :kind, :filename, :size, :key, :s3,"
+                + " 'UPLOADING', :license)")
         .param("id", id)
+        .param("kind", kind.name())
         .param("user", userId)
         .param("filename", filename)
         .param("size", sizeBytes)
@@ -147,13 +151,19 @@ class UploadService {
   Upload complete(UUID userId, UUID id, CompleteUploadRequest request) {
     var row =
         jdbc.sql(
-                "select object_key, s3_upload_id, status from upload where id = :id and user_id = :user")
+                "select object_key, s3_upload_id, status, kind from upload"
+                    + " where id = :id and user_id = :user")
             .param("id", id)
             .param("user", userId)
-            .query((rs, i) -> new String[] {rs.getString(1), rs.getString(2), rs.getString(3)})
+            .query(
+                (rs, i) ->
+                    new String[] {
+                      rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4)
+                    })
             .optional()
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such upload."));
+    var kind = UploadKind.valueOf(row[3]);
     if (!row[2].equals("UPLOADING")) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "This upload was already completed.");
     }
@@ -184,15 +194,14 @@ class UploadService {
 
     // The size was declared up front, but presigned URLs cannot enforce it, so check what arrived.
     var stored = s3.headObject(b -> b.bucket(bucketName).key(key)).contentLength();
-    // Every upload is audio until video ingest exists (ticket 20 records the kind on the row).
-    if (stored > properties.maxBytes(UploadKind.AUDIO)) {
+    if (stored > properties.maxBytes(kind)) {
       s3.deleteObject(b -> b.bucket(bucketName).key(key));
       jdbc.sql(
               "update upload set status = 'FAILED', error = :error, updated_at = now() where id = :id")
-          .param("error", tooLarge(UploadKind.AUDIO))
+          .param("error", tooLarge(kind))
           .param("id", id)
           .update();
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, tooLarge(UploadKind.AUDIO));
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, tooLarge(kind));
     }
 
     // Queue first, then flip the status: a job that wins the race must not be overwritten.
@@ -243,7 +252,7 @@ class UploadService {
   }
 
   private static final String SELECT =
-      "select id, filename, size_bytes, status, error, track_id, created_at from upload";
+      "select id, filename, size_bytes, status, error, track_id, video_id, created_at from upload";
 
   private static Upload map(ResultSet rs, int row) throws SQLException {
     return new Upload(
@@ -253,6 +262,7 @@ class UploadService {
         UploadStatus.valueOf(rs.getString("status")),
         rs.getString("error"),
         rs.getObject("track_id", UUID.class),
+        rs.getObject("video_id", UUID.class),
         rs.getObject("created_at", OffsetDateTime.class).toInstant());
   }
 }

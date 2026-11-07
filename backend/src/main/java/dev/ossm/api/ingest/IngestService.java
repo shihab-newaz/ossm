@@ -39,17 +39,25 @@ class IngestService {
   private final S3Client s3;
   private final Bucket bucket;
   private final TransactionTemplate transaction;
+  private final VideoIngest videos;
 
-  IngestService(JdbcClient jdbc, S3Client s3, Bucket bucket, TransactionTemplate transaction) {
+  IngestService(
+      JdbcClient jdbc,
+      S3Client s3,
+      Bucket bucket,
+      TransactionTemplate transaction,
+      VideoIngest videos) {
     this.jdbc = jdbc;
     this.s3 = s3;
     this.bucket = bucket;
     this.transaction = transaction;
+    this.videos = videos;
   }
 
-  private record UploadRow(
+  record UploadRow(
       UUID id,
       UUID userId,
+      UploadKind kind,
       String filename,
       long sizeBytes,
       String objectKey,
@@ -59,14 +67,15 @@ class IngestService {
   void ingest(UUID uploadId) {
     var upload =
         jdbc.sql(
-                "select id, user_id, filename, size_bytes, object_key, status, license from upload"
-                    + " where id = :id")
+                "select id, user_id, kind, filename, size_bytes, object_key, status, license"
+                    + " from upload where id = :id")
             .param("id", uploadId)
             .query(
                 (rs, i) ->
                     new UploadRow(
                         rs.getObject("id", UUID.class),
                         rs.getObject("user_id", UUID.class),
+                        UploadKind.valueOf(rs.getString("kind")),
                         rs.getString("filename"),
                         rs.getLong("size_bytes"),
                         rs.getString("object_key"),
@@ -79,6 +88,10 @@ class IngestService {
       return;
     }
     var row = upload.get();
+    if (row.kind() == UploadKind.VIDEO) {
+      ingestVideo(row);
+      return;
+    }
     Path dir = null;
     try {
       dir = Files.createTempDirectory("ossm-ingest");
@@ -124,6 +137,18 @@ class IngestService {
       throw new UncheckedIOException(e);
     } finally {
       deleteQuietly(dir);
+    }
+  }
+
+  private void ingestVideo(UploadRow row) {
+    try {
+      videos.ingest(row);
+    } catch (VideoIngest.Rejected e) {
+      fail(row.id(), e.getMessage());
+    } catch (NoSuchKeyException e) {
+      fail(row.id(), "The uploaded file could not be found in storage.");
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 

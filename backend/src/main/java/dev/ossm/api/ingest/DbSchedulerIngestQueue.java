@@ -26,13 +26,22 @@ class DbSchedulerIngestQueue implements IngestQueue, SmartLifecycle {
   private final boolean runJobs;
   private volatile boolean running;
 
-  DbSchedulerIngestQueue(DataSource dataSource, IngestProperties properties, IngestService ingest) {
+  DbSchedulerIngestQueue(
+      DataSource dataSource,
+      IngestProperties properties,
+      IngestService ingest,
+      ObjectDeletion deletion) {
     this.task =
         Tasks.oneTime(TASK_NAME, Void.class)
             .onFailure(retryWithBackoff(ingest))
             .execute((instance, context) -> ingest.ingest(UUID.fromString(instance.getId())));
+    // Rows for this task are written by ScheduledObjectDeletion, named by the prefix to empty.
+    var deleteTask =
+        Tasks.oneTime(ScheduledObjectDeletion.TASK_NAME, Void.class)
+            .onFailure(retryForever())
+            .execute((instance, context) -> deletion.deletePrefix(instance.getId()));
     this.scheduler =
-        Scheduler.create(dataSource, task)
+        Scheduler.create(dataSource, task, deleteTask)
             .threads(2)
             .pollingInterval(Duration.ofSeconds(1))
             .heartbeatInterval(properties.heartbeatInterval())
@@ -56,6 +65,14 @@ class DbSchedulerIngestQueue implements IngestQueue, SmartLifecycle {
         ingest.giveUp(UUID.fromString(complete.getExecution().taskInstance.getId()));
         operations.stop();
       }
+    };
+  }
+
+  /** A deletion is only done when the store says so: back off up to half an hour, never give up. */
+  private static FailureHandler<Void> retryForever() {
+    return (complete, operations) -> {
+      int failures = complete.getExecution().consecutiveFailures + 1;
+      operations.reschedule(complete, Instant.now().plus(RetryPolicy.delayAfter(failures)));
     };
   }
 

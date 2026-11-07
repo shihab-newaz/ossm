@@ -319,8 +319,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Failed uploads from everyone (admin) */
+        /**
+         * Failed music uploads from everyone (admin)
+         * @description Video uploads are left out, since a vault is private to its owner.
+         */
         get: operations["listIngestFailures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your vault, newest first
+         * @description Only your own videos. Pages follow a cursor, not an offset, so a page never repeats or skips a video even while uploads land: newest first, ties broken by id.
+         */
+        get: operations["listVideos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of your videos */
+        get: operations["getVideo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/{id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Play the original
+         * @description The stored file as uploaded, with byte-range support so seeking is quick. Only the owner can ask for it.
+         */
+        get: operations["streamVideo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/videos/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the original
+         * @description The stored file byte for byte, as an attachment under its original file name. Only the owner can ask for it.
+         */
+        get: operations["downloadVideo"];
         put?: never;
         post?: never;
         delete?: never;
@@ -716,8 +796,32 @@ export interface components {
              * @description Present when status is DONE, or DUPLICATE (the track already in the library)
              */
             trackId?: string;
+            /**
+             * Format: uuid
+             * @description For a video upload, present when status is DONE, or DUPLICATE (the video already in your vault)
+             */
+            videoId?: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        Video: {
+            /** Format: uuid */
+            id: string;
+            /** @description The file name without its extension, until it is renamed */
+            title: string;
+            description: string;
+            originalFilename: string;
+            /** @enum {string} */
+            container: "MP4" | "MOV" | "WEBM" | "MKV";
+            /** Format: int64 */
+            sizeBytes: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        VideoPage: {
+            items: components["schemas"]["Video"][];
+            /** @description Pass as cursor to get the next page. Absent on the last page. */
+            nextCursor?: string;
         };
         IngestFailure: {
             /** Format: uuid */
@@ -935,6 +1039,7 @@ export interface components {
         Limit: number;
         TrackId: string;
         UploadId: string;
+        VideoId: string;
         UserId: string;
         InviteToken: string;
     };
@@ -1587,6 +1692,171 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IngestFailure"][];
                 };
+            };
+        };
+    };
+    listVideos: {
+        parameters: {
+            query?: {
+                /** @description How many to return (default 50, at most 200) */
+                limit?: components["parameters"]["Limit"];
+                /** @description The nextCursor of the previous page */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of videos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VideoPage"];
+                };
+            };
+            /** @description A limit out of range, or a cursor that isn't one of ours */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getVideo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["VideoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The video */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Video"];
+                };
+            };
+            /** @description No such video in your vault */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    streamVideo: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description One byte range, such as bytes=0-1023, bytes=1024- or bytes=-512 */
+                Range?: string;
+            };
+            path: {
+                id: components["parameters"]["VideoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The whole file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/*": string;
+                };
+            };
+            /** @description The requested byte range */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/*": string;
+                };
+            };
+            /** @description No such video in your vault, or its file is missing from storage */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The range starts beyond the end of the file */
+            416: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    downloadVideo: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description One byte range, such as bytes=0-1023, bytes=1024- or bytes=-512 */
+                Range?: string;
+            };
+            path: {
+                id: components["parameters"]["VideoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The whole file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/*": string;
+                };
+            };
+            /** @description The requested byte range, so an interrupted download can resume */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/*": string;
+                };
+            };
+            /** @description No such video in your vault, or its file is missing from storage */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The range starts beyond the end of the file */
+            416: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
