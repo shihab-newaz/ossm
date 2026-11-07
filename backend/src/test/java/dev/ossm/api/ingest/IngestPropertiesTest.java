@@ -42,4 +42,19 @@ class IngestPropertiesTest {
     assertThat(props.maxBytes(UploadKind.AUDIO)).isEqualTo(DataSize.ofMegabytes(100).toBytes());
     assertThat(props.maxBytes(UploadKind.VIDEO)).isEqualTo(DataSize.ofGigabytes(4).toBytes());
   }
+
+  @Test
+  void capsReadInWholeGbOrMbAndOtherwiseInBytes() {
+    var props =
+        bind(
+            Map.of(
+                "ossm.ingest.max-audio-bytes",
+                "1500MB",
+                "ossm.ingest.max-video-bytes",
+                "1000000B"));
+
+    assertThat(bind(Map.of()).capText(UploadKind.VIDEO)).isEqualTo("20 GB");
+    assertThat(props.capText(UploadKind.AUDIO)).isEqualTo("1500 MB");
+    assertThat(props.capText(UploadKind.VIDEO)).isEqualTo("1000000 bytes");
+  }
 }
